@@ -4,7 +4,7 @@ import * as THREE from 'three';
  * Accumulates flat-shaded, vertex-coloured triangles into a few buckets
  * (one draw call per bucket), so a whole house is ~3 draw calls.
  */
-export type BucketName = 'solid' | 'glass' | 'water';
+export type BucketName = 'solid' | 'glass' | 'glassLit' | 'water' | 'lamp';
 
 interface Bucket {
   pos: number[];
@@ -128,7 +128,7 @@ export class MeshBuilder {
       g.setAttribute('color', new THREE.Float32BufferAttribute(b.col, 3));
       g.computeBoundingSphere();
       const mesh = new THREE.Mesh(g, materials[name]);
-      mesh.castShadow = name !== 'water';
+      mesh.castShadow = name !== 'water' && name !== 'lamp';
       mesh.receiveShadow = true;
       mesh.name = name;
       group.add(mesh);
@@ -148,3 +148,83 @@ export const TEMPLATES = {
   blobSmooth: flat(new THREE.IcosahedronGeometry(1, 1)),
   cone: flat(new THREE.ConeGeometry(1, 1, 7)),
 };
+
+const smooth = (g: THREE.BufferGeometry) => (g.index ? g.toNonIndexed() : g);
+export const SHAPES = {
+  box: smooth(new THREE.BoxGeometry(1, 1, 1)),
+  /** Unit cylinder: radius 1, height 1, centred on the origin, axis +y. */
+  cyl: smooth(new THREE.CylinderGeometry(1, 1, 1, 14)),
+  cylLow: smooth(new THREE.CylinderGeometry(1, 1, 1, 6)),
+  /** Unit cone: radius 1, height 1, apex +y. */
+  cone: smooth(new THREE.ConeGeometry(1, 1, 12)),
+  sphere: smooth(new THREE.SphereGeometry(1, 10, 6)),
+};
+
+const _Y = new THREE.Vector3(0, 1, 0);
+
+/**
+ * A local coordinate frame (position + rotation around +y) for drawing props.
+ * All coordinates passed to its methods are in the prop's local space.
+ */
+export class LocalFrame {
+  private readonly base: THREE.Matrix4;
+  private readonly q: THREE.Quaternion;
+
+  constructor(
+    private readonly b: MeshBuilder,
+    x: number,
+    y: number,
+    z: number,
+    rot: number,
+  ) {
+    this.q = new THREE.Quaternion().setFromAxisAngle(_Y, rot);
+    this.base = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), this.q, new THREE.Vector3(1, 1, 1));
+  }
+
+  p(x: number, y: number, z: number): THREE.Vector3 {
+    return new THREE.Vector3(x, y, z).applyMatrix4(this.base);
+  }
+
+  dir(x: number, y: number, z: number): THREE.Vector3 {
+    return new THREE.Vector3(x, y, z).applyQuaternion(this.q);
+  }
+
+  private put(bucket: BucketName, geom: THREE.BufferGeometry, pos: THREE.Vector3, q: THREE.Quaternion, scale: THREE.Vector3, c: THREE.Color): void {
+    const m = new THREE.Matrix4().compose(pos, q, scale);
+    this.b.geometry(bucket, geom, this.base.clone().multiply(m), c);
+  }
+
+  /** Axis-aligned (in local space) box between two corners. */
+  box(bucket: BucketName, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, c: THREE.Color): void {
+    this.put(
+      bucket, SHAPES.box,
+      new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), new THREE.Quaternion(),
+      new THREE.Vector3(Math.abs(x1 - x0), Math.abs(y1 - y0), Math.abs(z1 - z0)), c,
+    );
+  }
+
+  /** Shape (cylinder/cone/sphere template) whose +y axis is aligned with `axis`, centred at (x,y,z). */
+  shape(bucket: BucketName, geom: THREE.BufferGeometry, x: number, y: number, z: number, rx: number, h: number, rz: number, c: THREE.Color, axis = _Y): void {
+    const q = new THREE.Quaternion().setFromUnitVectors(_Y, axis.clone().normalize());
+    this.put(bucket, geom, new THREE.Vector3(x, y, z), q, new THREE.Vector3(rx, h, rz), c);
+  }
+
+  /** Square-section beam between two local points (posts, rails, ropes, legs). */
+  beam(bucket: BucketName, a: [number, number, number], bEnd: [number, number, number], t: number, c: THREE.Color): void {
+    const A = new THREE.Vector3(...a);
+    const B = new THREE.Vector3(...bEnd);
+    const d = new THREE.Vector3().subVectors(B, A);
+    const len = d.length();
+    if (len < 1e-4) return;
+    const q = new THREE.Quaternion().setFromUnitVectors(_Y, d.divideScalar(len));
+    this.put(bucket, SHAPES.box, A.add(B).multiplyScalar(0.5), q, new THREE.Vector3(t, len, t), c);
+  }
+
+  /** Flat polygon (3 or 4 local points). `hint` is a local direction the face should point to. */
+  poly(bucket: BucketName, pts: [number, number, number][], c: THREE.Color, hint?: [number, number, number]): void {
+    const P = pts.map(([x, y, z]) => this.p(x, y, z));
+    const H = hint ? this.dir(...hint) : undefined;
+    if (P.length === 3) this.b.tri(bucket, P[0], P[1], P[2], c, H);
+    else this.b.quad(bucket, P[0], P[1], P[2], P[3], c, H);
+  }
+}

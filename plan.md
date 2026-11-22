@@ -75,7 +75,7 @@ src/
 | **Office tower** | Podium plus box, rounded or chamfered tower | Curtain wall or grid | Flat roof, mechanical housing, antenna | floors 20–60, corner style |
 | **Mid-rise mixed-use** | Built to the lot edge, occasional upper setback | Shopfront ground floor, punched windows above | Parapet, AC units, water tank | floors 4–12, brick or modern |
 | **Apartment block** | Slab, point tower or courtyard | Punched windows, balconies | Flat roof, roof garden | floors 5–25, balcony style |
-| **Row house/townhouse** | Narrow joined boxes | Bay windows, stoops | Gable or flat roof, chimneys | width, colours, roof height variation |
+| **Row house/townhouse** ✅ | Narrow joined boxes | Bay windows, stoops | Gable or flat roof, chimneys | width, colours, roof height variation |
 | **Suburban house** ✅ | Main block + wing + garage, or stacked volumes | Windows, door, porch | Gable, hip, shed or flat roof | style, floors, garage, wing, porch, pool |
 | **Shop/strip mall** | Wide, low box | Glass front, signs | Flat roof, big AC units | number of units, sign colours |
 | **Warehouse** | Large low box | Few windows, roll-up doors | Sawtooth or flat roof, loading docks | size, number of docks |
@@ -93,7 +93,7 @@ src/
 | **B2** | Floors and facade grammar, window shader (UV cells, frames, glass), special ground floor | ⬜ |
 | **B3** | Roofs: flat + parapet, gable, hip, sawtooth, tower crowns, rooftop clutter | ⬜ (gable/hip/shed/flat done for houses) |
 | **B4** | Modern core types: office tower, supertall, mid-rise mixed-use, apartment block (the skyline) | ⬜ |
-| **B5** | Low-rise types: row house, **suburban house ✅**, shop, warehouse, factory | 🟨 In progress |
+| **B5** | Low-rise types: **row house ✅**, **suburban house ✅**, shop, warehouse, factory | 🟨 In progress |
 | **B6** | Style system: palettes, realistic/stylized switch, material variation, night mode with lit windows | ⬜ |
 | **B7** | Details and LOD: balconies, awnings, signs, fire escapes, LOD0/1/2, merging, instancing | ⬜ |
 | **B8** | Stress test: 30×30 grid of random buildings at 60 fps, set the performance budget | ⬜ |
@@ -128,3 +128,30 @@ Yard     -> Lawn + Fence/Hedge + Trees + Shrubs [+ Pool]
 
 ## Next
 Waiting on feedback for the suburban house, then the next building type.
+
+## Done: Row houses / townhouses
+
+File: `src/buildings/types/rowhouse.ts`.
+
+```
+Lot   -> Row of N units sharing party walls
+Unit  -> Mass [+ Bay window] [+ Recessed top floor] [+ Garage door]
+Front -> Bays x Floors -> Window | Door (doors mirrored in pairs)
+Entry -> Stoop + railings | Door hood + steps | Canopy
+Yard  -> Paved areaway + iron fence | front garden | driveway; narrow fenced back yards
+```
+
+- **Brownstone:** 3–5 floors, varying heights, raised parlour floor with a stoop and iron railings, cornices, garden-level windows, iron front fence.
+- **Terrace:** pastel units, continuous slate gable or a front gable per unit, chimney stacks on party walls, door hoods.
+- **Modern townhouse:** mixed cladding, flat roofs, optional recessed top floor with roof terrace, optional integrated garages.
+
+## Done: Small-details system (shared by all residential types)
+
+File: `src/buildings/details/details.ts` (placement), `src/buildings/mesher/propMesher.ts` (geometry).
+
+- **Yard:** swing set, slide, trampoline, dog house, patio set with umbrella, BBQ, garden bed, clothesline, bench.
+- **Services:** water tanks (on flat roofs on a short stand, or on a tall steel stand in the yard), wall-mounted split ACs, ground AC units, solar panels, satellite dishes.
+- **Street side:** parked cars, mailboxes, bins.
+- **Lights:** door sconces, porch ceiling lights, garage lights, back-door lights, path bollards, lamp posts, street lamps.
+- **Night mode:** lamps and some windows glow, with bloom.
+- **Lab sliders:** water tank frequency, yard prop density, parked car chance.

@@ -48,6 +48,47 @@ export const HOUSE_PALETTES: Record<HouseStyle, HousePalette> = {
   },
 };
 
+export type RowStyle = 'brownstone' | 'terrace' | 'modernTown';
+
+export interface RowPalette {
+  walls: string[];
+  roofs: string[];
+  trims: string[];
+  doors: string[];
+  cornices: string[];
+  paving: string[];
+}
+
+export const ROW_PALETTES: Record<RowStyle, RowPalette> = {
+  // New York style brownstones: brown/red stone, stone trims, heavy cornices.
+  brownstone: {
+    walls: ['#7a4a3a', '#8b5a44', '#6e3f33', '#9a6a52', '#a0522d', '#7d5a4a', '#b07a5a', '#8a4a3a'],
+    roofs: ['#4a4a4a', '#555555'],
+    trims: ['#e9e2cf', '#d8cfb8', '#cbbfa5'],
+    doors: ['#3a2a20', '#1f2a33', '#5c1f1f', '#2f3b2f', '#6b4a33'],
+    cornices: ['#3b3632', '#5a4a3f', '#e9e2cf', '#2f2b28'],
+    paving: ['#a9a49a', '#b3aca0'],
+  },
+  // British / European terraces: pastel render, white trims, slate roofs.
+  terrace: {
+    walls: ['#f2e6c9', '#d7e3e8', '#f0d4c8', '#e8e1d1', '#cfe0c8', '#f5f1e6', '#e7c9c1', '#c9d8e6', '#f3dfa2', '#e9d0e3'],
+    roofs: ['#4a4f59', '#55595e', '#5c3b2f'],
+    trims: ['#ffffff', '#f7f4ec'],
+    doors: ['#7d2b25', '#2d4b66', '#2f5040', '#232323', '#d4a017', '#6a2f6a', '#1f6b6b'],
+    cornices: ['#ffffff'],
+    paving: ['#c4beb3', '#b8b2a6'],
+  },
+  // Contemporary townhouses: mixed cladding, dark frames, flat roofs.
+  modernTown: {
+    walls: ['#f3f3f1', '#3b3e42', '#b4895e', '#9da0a3', '#d9d5cc', '#2f3236', '#c8b8a2'],
+    roofs: ['#4d5054', '#2f3236'],
+    trims: ['#26282b', '#3a3d40'],
+    doors: ['#b4895e', '#26282b', '#8c6a48'],
+    cornices: ['#26282b'],
+    paving: ['#d0cdc6', '#a9a6a0'],
+  },
+};
+
 /** Accent cladding for modern upper volumes (wood, charcoal, white). */
 export const MODERN_ACCENTS_DARK = ['#3b3e42', '#b4895e', '#2f3236', '#8c6a48'];
 export const MODERN_ACCENTS_LIGHT = ['#f3f3f1', '#d9d5cc', '#b4895e'];

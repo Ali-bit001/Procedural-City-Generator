@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { MeshBuilder, TEMPLATES, col, type BucketName } from './MeshBuilder';
-import { massTop, type HouseModel, type Mass, type Opening, type Porch, type Tree, type Fence } from '../spec';
+import { LocalFrame, MeshBuilder, SHAPES, TEMPLATES, col, type BucketName } from './MeshBuilder';
+import { drawLight, drawProp } from './propMesher';
+import { STEP_RUN, massTop, stairRun, type HouseModel, type Mass, type Opening, type Porch, type Tree, type Fence } from '../spec';
 
 export interface HouseMeshOptions {
   /** Depth of the sidewalk/verge in front of the lot (negative z) for the driveway apron. */
@@ -22,8 +23,7 @@ export function buildHouseMesh(
   // Lawn & paving
   b.box('solid', 0, -0.1, 0, W, 0.02, D, col(model.lawnColor));
   const paving = col(model.pavingColor);
-  if (model.driveway) {
-    const d = model.driveway;
+  for (const d of model.driveways) {
     b.box('solid', d.x0, 0.02, d.z0, d.x1, 0.06, d.z1, paving);
     if (opts.apronDepth) b.box('solid', d.x0, -0.14, -opts.apronDepth, d.x1, 0.035, 0, paving);
   }
@@ -31,15 +31,21 @@ export function buildHouseMesh(
 
   for (const m of model.masses) massMesh(b, m, model);
   for (const o of model.openings) openingMesh(b, o);
-  if (model.porch) porchMesh(b, model.porch);
-  if (model.chimney) {
-    const c = model.chimney;
+  for (const p of model.porches) porchMesh(b, p);
+  for (const c of model.chimneys) {
     b.box('solid', c.x - c.w / 2, c.y0, c.z - c.d / 2, c.x + c.w / 2, c.y1, c.z + c.d / 2, col(c.color));
     b.box('solid', c.x - c.w / 2 - 0.08, c.y1, c.z - c.d / 2 - 0.08, c.x + c.w / 2 + 0.08, c.y1 + 0.12, c.z + c.d / 2 + 0.08, col('#5a5652'));
+    // chimney pots
+    for (const s of c.w > 0.8 ? [-0.2, 0.2] : [0]) {
+      const L = new LocalFrame(b, c.x + s, c.y1 + 0.12, c.z, 0);
+      L.shape('solid', SHAPES.cylLow, 0, 0.15, 0, 0.1, 0.3, 0.1, col('#a8553a'));
+    }
   }
   if (model.pool) poolMesh(b, model.pool);
   for (const f of model.fences) fenceMesh(b, f);
   for (const t of model.trees) treeMesh(b, t);
+  for (const p of model.props) drawProp(b, p);
+  for (const l of model.lights) drawLight(b, l);
   if (opts.streetTreeZ !== undefined) {
     model.streetTreeXs.forEach((x, i) =>
       treeMesh(b, { kind: 'round', x, z: opts.streetTreeZ!, scale: 1.15, rot: x * 7.1 + i, color: '#5a8838', trunkColor: '#6b4a33' }),
@@ -60,12 +66,20 @@ function massMesh(b: MeshBuilder, m: Mass, model: HouseModel): void {
     b.box('solid', r.x0 - 0.06, 0, r.z0 - 0.06, r.x1 + 0.06, m.baseY, r.z1 + 0.06, col(model.foundationColor));
   }
   b.box('solid', r.x0, m.baseY, r.z0, r.x1, top, r.z1, wall);
-  // Thin band between floors on multi-storey traditional houses.
-  if (m.floors > 1 && model.style !== 'modern') {
+  // Thin band between floors.
+  if (m.floors > 1 && m.floorBands) {
     for (let f = 1; f < m.floors; f++) {
       const y = m.baseY + f * m.floorHeight;
       b.box('solid', r.x0 - 0.04, y - 0.06, r.z0 - 0.04, r.x1 + 0.04, y + 0.06, r.z1 + 0.04, col(model.trimColor));
     }
+  }
+  // Projecting cornice along the front (brownstones).
+  if (m.cornice) {
+    const c = col(m.cornice);
+    const ty = top + (m.roof.type === 'flat' && m.roof.parapet ? 0.55 : 0);
+    b.box('solid', r.x0, ty - 0.45, r.z0 - 0.35, r.x1, ty + 0.12, r.z0 + 0.1, c);
+    b.box('solid', r.x0, ty - 0.6, r.z0 - 0.18, r.x1, ty - 0.45, r.z0, c);
+    for (let x = r.x0 + 0.35; x < r.x1 - 0.2; x += 0.9) b.box('solid', x, ty - 0.75, r.z0 - 0.3, x + 0.14, ty - 0.45, r.z0, c); // brackets
   }
   roofMesh(b, m, model.trimColor);
 }
@@ -99,13 +113,15 @@ function roofMesh(b: MeshBuilder, m: Mass, trimHex: string): void {
     case 'gable': {
       const ry = top + half * p;
       const ey = top - oh * p;
-      b.slab('solid', P(u0 - go, ey, v0 - oh), P(u1 + go, ey, v0 - oh), P(u1 + go, ry, vc), P(u0 - go, ry, vc), 0.12, roofC);
-      b.slab('solid', P(u0 - go, ey, v1 + oh), P(u1 + go, ey, v1 + oh), P(u1 + go, ry, vc), P(u0 - go, ry, vc), 0.12, roofC);
+      const g0 = R.gableOverhangs ? R.gableOverhangs[0] : go;
+      const g1 = R.gableOverhangs ? R.gableOverhangs[1] : go;
+      b.slab('solid', P(u0 - g0, ey, v0 - oh), P(u1 + g1, ey, v0 - oh), P(u1 + g1, ry, vc), P(u0 - g0, ry, vc), 0.12, roofC);
+      b.slab('solid', P(u0 - g0, ey, v1 + oh), P(u1 + g1, ey, v1 + oh), P(u1 + g1, ry, vc), P(u0 - g0, ry, vc), 0.12, roofC);
       b.tri('solid', P(u0, top, v0), P(u0, top, v1), P(u0, ry, vc), wallC, P(-1, 0, 0));
       b.tri('solid', P(u1, top, v0), P(u1, top, v1), P(u1, ry, vc), wallC, P(1, 0, 0));
       // Fascia boards along the eaves.
-      boxRS(u0 - go, u1 + go, ey - 0.18, ey, v0 - oh - 0.03, v0 - oh + 0.06, trimC);
-      boxRS(u0 - go, u1 + go, ey - 0.18, ey, v1 + oh - 0.06, v1 + oh + 0.03, trimC);
+      boxRS(u0 - g0, u1 + g1, ey - 0.18, ey, v0 - oh - 0.03, v0 - oh + 0.06, trimC);
+      boxRS(u0 - g0, u1 + g1, ey - 0.18, ey, v1 + oh - 0.06, v1 + oh + 0.03, trimC);
       break;
     }
     case 'hip': {
@@ -185,7 +201,7 @@ function openingMesh(b: MeshBuilder, o: Opening): void {
   const f = 0.08;
 
   if (o.kind === 'window') {
-    wallBox(b, 'glass', o, -hw, hw, y0, y1, -0.02, 0.03, col(o.color));
+    wallBox(b, o.lit ? 'glassLit' : 'glass', o, -hw, hw, y0, y1, -0.02, 0.03, col(o.color));
     wallBox(b, 'solid', o, -hw - f, hw + f, y1, y1 + f, 0, 0.08, frame); // head
     wallBox(b, 'solid', o, -hw - f - 0.05, hw + f + 0.05, y0 - f, y0, 0, 0.13, frame); // sill
     wallBox(b, 'solid', o, -hw - f, -hw, y0, y1, 0, 0.08, frame);
@@ -200,6 +216,7 @@ function openingMesh(b: MeshBuilder, o: Opening): void {
       wallBox(b, 'solid', o, -hw - f - sw, -hw - f - 0.02, y0, y1, 0, 0.05, sc);
       wallBox(b, 'solid', o, hw + f + 0.02, hw + f + sw, y0, y1, 0, 0.05, sc);
     }
+    if (o.shade) shadeMesh(b, o, hw, y1 + f);
   } else if (o.kind === 'door') {
     wallBox(b, 'solid', o, -hw, hw, y0, y1, -0.02, 0.06, col(o.color));
     wallBox(b, 'glass', o, -hw * 0.6, hw * 0.6, y1 - 0.7, y1 - 0.25, 0.06, 0.07, col('#2b3a48'));
@@ -221,13 +238,76 @@ function openingMesh(b: MeshBuilder, o: Opening): void {
   }
 }
 
+/** Sunshade above a window: a concrete slab (chajja) or a striped, sloping fabric awning. */
+function shadeMesh(b: MeshBuilder, o: Opening, hw: number, top: number): void {
+  const c = col(o.shade!.color);
+  if (o.shade!.kind === 'slab') {
+    wallBox(b, 'solid', o, -hw - 0.25, hw + 0.25, top + 0.04, top + 0.14, 0, 0.6, c);
+    return;
+  }
+  // Point on the wall-relative frame: t along the wall, y up, d outwards.
+  const W = (t: number, y: number, d: number) => (o.nz !== 0 ? V(o.cx + t, y, o.cz + o.nz * d) : V(o.cx + o.nx * d, y, o.cz + t));
+  const out = V(o.nx, 0.6, o.nz);
+  const yHigh = top + 0.2; // stays below the wall top so it never pokes through the eaves
+  const yLow = top - 0.3;
+  const depth = 0.7;
+  const t0 = -hw - 0.12;
+  const t1 = hw + 0.12;
+  const white = col('#f4f1ea');
+  const stripes = Math.max(2, Math.round((t1 - t0) / 0.22));
+  for (let i = 0; i < stripes; i++) {
+    const a = t0 + ((t1 - t0) * i) / stripes;
+    const bb = t0 + ((t1 - t0) * (i + 1)) / stripes;
+    b.quad('solid', W(a, yHigh, 0), W(bb, yHigh, 0), W(bb, yLow, depth), W(a, yLow, depth), i % 2 ? white : c, out);
+  }
+  // Side cheeks and a valance along the front edge.
+  b.tri('solid', W(t0, yHigh, 0), W(t0, yLow, depth), W(t0, yLow, 0.02), c, V(o.nz !== 0 ? -1 : 0, 0, o.nz !== 0 ? 0 : -1));
+  b.tri('solid', W(t1, yHigh, 0), W(t1, yLow, depth), W(t1, yLow, 0.02), c, V(o.nz !== 0 ? 1 : 0, 0, o.nz !== 0 ? 0 : 1));
+  b.quad('solid', W(t0, yLow, depth), W(t1, yLow, depth), W(t1, yLow - 0.15, depth), W(t0, yLow - 0.15, depth), c, V(o.nx, 0, o.nz));
+}
+
 // ---------------------------------------------------------------- entrance
 
 function porchMesh(b: MeshBuilder, p: Porch): void {
   const r = p.rect;
-  b.box('solid', r.x0, 0, r.z0, r.x1, p.floorY, r.z1, col(p.floorColor));
-  if (p.floorY > 0.25) {
-    b.box('solid', p.stepX - 0.8, 0, r.z0 - 0.35, p.stepX + 0.8, p.floorY * 0.5, r.z0, col(p.floorColor));
+  const floorC = col(p.floorColor);
+  b.box('solid', r.x0, 0, r.z0, r.x1, p.floorY, r.z1, floorC);
+
+  // Stairs down towards the street (-z): ~18 cm risers, 28 cm treads.
+  const run = stairRun(p.floorY);
+  const nSteps = Math.round(run / STEP_RUN);
+  const rise = p.floorY / (nSteps + 1);
+  const sw = p.kind === 'stoop' ? (r.x1 - r.x0) / 2 : Math.min(0.8, (r.x1 - r.x0) / 2);
+  for (let i = 0; i < nSteps; i++) {
+    const top = p.floorY - (i + 1) * rise;
+    b.box('solid', p.stepX - sw, 0, r.z0 - (i + 1) * STEP_RUN, p.stepX + sw, top, r.z0 - i * STEP_RUN, floorC);
+  }
+
+  if (p.kind === 'stoop') {
+    // Iron railings along the landing and down the stair, with balusters.
+    const iron = col(p.postColor);
+    const L = new LocalFrame(b, 0, 0, 0, 0);
+    const zFoot = r.z0 - run;
+    for (const x of [r.x0 + 0.05, r.x1 - 0.05]) {
+      const yTop = p.floorY + 0.9;
+      L.beam('solid', [x, yTop, r.z1 - 0.05], [x, yTop, r.z0], 0.05, iron);
+      L.beam('solid', [x, yTop, r.z0], [x, 0.95, zFoot + 0.1], 0.05, iron);
+      for (let z = r.z1 - 0.2; z > zFoot + 0.15; z -= 0.3) {
+        const yBase = z >= r.z0 ? p.floorY : Math.max(0, p.floorY - ((r.z0 - z) / STEP_RUN + 1) * rise);
+        const yRail = z >= r.z0 ? yTop : 0.95 + ((yTop - 0.95) * (z - zFoot - 0.1)) / (r.z0 - zFoot - 0.1);
+        L.beam('solid', [x, yBase, z], [x, yRail, z], 0.025, iron);
+      }
+      b.box('solid', x - 0.07, 0, zFoot - 0.02, x + 0.07, 1.1, zFoot + 0.12, iron); // newel post
+    }
+    return;
+  }
+  if (p.kind === 'hood') {
+    // Small hood on brackets above the door.
+    const c = col(p.roofColor);
+    b.box('solid', p.stepX - 0.8, p.roofY, r.z1 - 0.75, p.stepX + 0.8, p.roofY + 0.12, r.z1, c);
+    b.slab('solid', V(p.stepX - 0.85, p.roofY + 0.12, r.z1 - 0.8), V(p.stepX + 0.85, p.roofY + 0.12, r.z1 - 0.8), V(p.stepX + 0.85, p.roofY + 0.35, r.z1), V(p.stepX - 0.85, p.roofY + 0.35, r.z1), 0.05, c);
+    for (const s of [-0.7, 0.62]) b.box('solid', p.stepX + s, p.roofY - 0.35, r.z1 - 0.55, p.stepX + s + 0.08, p.roofY, r.z1, c);
+    return;
   }
   if (p.kind === 'porch') {
     const post = col(p.postColor);
@@ -273,18 +353,26 @@ function fenceMesh(b: MeshBuilder, f: Fence): void {
       if (alongX) b.box('solid', ax, y0, az - thick / 2, bx, y1, bz + thick / 2, c);
       else b.box('solid', ax - thick / 2, y0, az, bx + thick / 2, y1, bz, c);
     };
+    const h = s.height ?? f.height;
     if (f.kind === 'hedge') {
       for (let a = 0; a < len; a += 2) {
-        const h = f.height * (0.92 + 0.16 * Math.abs(Math.sin(a * 3.7 + s.x0)));
-        seg(a, Math.min(len, a + 2.05), 0, h, 0.9);
+        const hv = h * (0.92 + 0.16 * Math.abs(Math.sin(a * 3.7 + s.x0)));
+        seg(a, Math.min(len, a + 2.05), 0, hv, 0.9);
       }
     } else if (f.kind === 'privacy') {
-      seg(0, len, 0, f.height, 0.06);
-      for (let a = 0; a <= len; a += 2.4) seg(Math.max(0, a - 0.06), Math.min(len, a + 0.06), 0, f.height + 0.08, 0.14);
+      seg(0, len, 0, h, 0.06);
+      for (let a = 0; a <= len; a += 2.4) seg(Math.max(0, a - 0.06), Math.min(len, a + 0.06), 0, h + 0.08, 0.14);
+    } else if (f.kind === 'iron') {
+      // Low wrought-iron railing on a stone kerb.
+      seg(0, len, 0, 0.15, 0.2);
+      seg(0, len, h - 0.05, h, 0.05);
+      seg(0, len, 0.3, 0.34, 0.03);
+      for (let a = 0.08; a < len; a += 0.14) seg(a, Math.min(len, a + 0.025), 0.15, h + 0.06, 0.025);
+      for (let a = 0; a <= len; a += 2.0) seg(Math.max(0, a - 0.06), Math.min(len, a + 0.06), 0, h + 0.12, 0.12);
     } else {
       seg(0, len, 0.35, 0.43, 0.04);
-      seg(0, len, 0.8, 0.88, 0.04);
-      for (let a = 0.05; a < len; a += 0.26) seg(a, Math.min(len, a + 0.09), 0, f.height, 0.03);
+      if (h > 0.95) seg(0, len, 0.8, 0.88, 0.04);
+      for (let a = 0.05; a < len; a += 0.26) seg(a, Math.min(len, a + 0.09), 0, h, 0.03);
     }
   }
 }
