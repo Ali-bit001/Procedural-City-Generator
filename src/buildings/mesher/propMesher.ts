@@ -52,10 +52,10 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       break;
     }
     case 'trampoline': {
-      L.shape('solid', SHAPES.cyl, 0, 0.85, 0, 1.8, 0.1, 1.8, c1);
+      L.shape('solid', SHAPES.tube, 0, 0.85, 0, 1.8, 0.1, 1.8, c1);
       L.shape('solid', SHAPES.cyl, 0, 0.91, 0, 1.55, 0.02, 1.55, c2);
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2;
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + 0.4;
         L.beam('solid', [Math.cos(a) * 1.7, 0.85, Math.sin(a) * 1.7], [Math.cos(a) * 1.75, 0, Math.sin(a) * 1.75], 0.06, STEEL);
       }
       break;
@@ -72,7 +72,7 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       L.poly('solid', [[-w, hgt, -d], [w, hgt, -d], [0, ry - 0.05, -d]], c1, [0, 0, -1]);
       L.poly('solid', [[-w, hgt, d], [w, hgt, d], [0, ry - 0.05, d]], c1, [0, 0, 1]);
       L.box('solid', -0.2, 0.02, -d - 0.01, 0.2, 0.5, -d + 0.02, DARK); // doorway
-      L.shape('solid', SHAPES.cyl, 0.35, 0.04, -d - 0.45, 0.13, 0.08, 0.13, col('#c0392b')); // bowl
+      L.shape('solid', SHAPES.cylLow, 0.35, 0.04, -d - 0.45, 0.13, 0.08, 0.13, col('#c0392b')); // bowl
       break;
     }
     case 'patioSet': {
@@ -104,9 +104,9 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
     case 'gardenBed': {
       L.box('solid', -1.6, 0, -0.65, 1.6, 0.28, 0.65, c1);
       L.box('solid', -1.5, 0.28, -0.55, 1.5, 0.3, 0.55, col('#4a3426'));
-      for (let i = 0; i < 9; i++) {
+      for (let i = 0; i < 5; i++) {
         const px = -1.3 + (i % 5) * 0.65 + (i > 4 ? 0.3 : 0);
-        const pz = i > 4 ? 0.22 : -0.22;
+        const pz = i % 2 ? 0.22 : -0.22;
         b.geometry('solid', TEMPLATES.blob, new THREE.Matrix4().compose(L.p(px, 0.42, pz), new THREE.Quaternion(), new THREE.Vector3(0.22, 0.2, 0.22)), col('#4f8a3a'));
         if (h01(p.x + i, p.z) > 0.4) L.box('solid', px - 0.06, 0.55, pz - 0.06, px + 0.06, 0.65, pz + 0.06, c2);
       }
@@ -145,11 +145,10 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
     case 'splitAC': {
       // wall-mounted outdoor unit on brackets; local -z points away from the wall
       L.box('solid', -0.42, 0, -0.36, 0.42, 0.6, -0.06, c1);
-      L.shape('solid', SHAPES.cyl, -0.08, 0.3, -0.365, 0.22, 0.01, 0.22, DARK, Z);
+      L.shape('solid', SHAPES.cylLow, -0.08, 0.3, -0.365, 0.22, 0.01, 0.22, DARK, Z);
       L.box('solid', 0.22, 0.08, -0.37, 0.38, 0.52, -0.36, col('#b8bcbf'));
       for (const sx of [-0.32, 0.32]) {
         L.beam('solid', [sx, -0.02, 0], [sx, -0.02, -0.4], 0.04, STEEL);
-        L.beam('solid', [sx, -0.02, -0.38], [sx, -0.35, 0], 0.03, STEEL);
       }
       L.beam('solid', [0.42, 0.25, -0.2], [0.55, 0.25, -0.02], 0.03, col('#e6e6e6')); // pipe
       break;
@@ -158,30 +157,42 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       const r = p.w ?? 0.6;
       const stand = p.h ?? 0.6;
       const th = r * 2.0;
-      // stand
       const s = r * 0.85;
-      for (const [sx, sz] of [[-s, -s], [s, -s], [s, s], [-s, s]]) L.beam('solid', [sx, 0, sz], [sx, stand, sz], 0.07, STEEL);
       if (stand > 1.5) {
-        for (const yb of [stand * 0.35, stand * 0.7]) {
-          L.beam('solid', [-s, yb, -s], [s, yb, -s], 0.04, STEEL);
-          L.beam('solid', [-s, yb, s], [s, yb, s], 0.04, STEEL);
-          L.beam('solid', [-s, yb, -s], [-s, yb, s], 0.04, STEEL);
-          L.beam('solid', [s, yb, -s], [s, yb, s], 0.04, STEEL);
-        }
-        L.beam('solid', [-s, 0, -s], [s, stand * 0.35, -s], 0.035, STEEL);
-        L.beam('solid', [s, 0, s], [-s, stand * 0.35, s], 0.035, STEEL);
+        // tall steel tower (yards)
+        for (const [sx, sz] of [[-s, -s], [s, -s], [s, s], [-s, s]]) L.beam('solid', [sx, 0, sz], [sx, stand, sz], 0.07, STEEL);
+        const yb = stand * 0.5;
+        L.beam('solid', [-s, yb, -s], [s, yb, -s], 0.04, STEEL);
+        L.beam('solid', [-s, yb, s], [s, yb, s], 0.04, STEEL);
+        L.beam('solid', [-s, yb, -s], [-s, yb, s], 0.04, STEEL);
+        L.beam('solid', [s, yb, -s], [s, yb, s], 0.04, STEEL);
+        L.box('solid', -s - 0.08, stand, -s - 0.08, s + 0.08, stand + 0.08, s + 0.08, STEEL);
+      } else {
+        // short roof stand: one block
+        L.box('solid', -s - 0.08, 0, -s - 0.08, s + 0.08, stand + 0.08, s + 0.08, STEEL);
       }
-      L.box('solid', -s - 0.08, stand, -s - 0.08, s + 0.08, stand + 0.08, s + 0.08, STEEL);
-      // tank body with ribs and a lid
       const y0 = stand + 0.08;
       L.shape('solid', SHAPES.cyl, 0, y0 + th / 2, 0, r, th, r, c1);
       const rib = c1.clone().multiplyScalar(0.8);
-      for (const f of [0.25, 0.5, 0.75]) L.shape('solid', SHAPES.cyl, 0, y0 + th * f, 0, r + 0.02, 0.05, r + 0.02, rib);
+      for (const f of [0.33, 0.66]) L.shape('solid', SHAPES.tube, 0, y0 + th * f, 0, r + 0.02, 0.05, r + 0.02, rib);
       L.shape('solid', SHAPES.cone, 0, y0 + th + 0.08, 0, r * 0.95, 0.16, r * 0.95, c1);
-      L.shape('solid', SHAPES.cyl, 0, y0 + th + 0.2, 0, r * 0.35, 0.1, r * 0.35, c1);
-      // outlet pipe down
-      L.beam('solid', [r * 0.7, y0 + 0.15, 0], [r + 0.15, y0 + 0.15, 0], 0.05, col('#d9d9d9'));
-      L.beam('solid', [r + 0.15, y0 + 0.15, 0], [r + 0.15, 0, 0], 0.05, col('#d9d9d9'));
+      L.shape('solid', SHAPES.cylLow, 0, y0 + th + 0.2, 0, r * 0.35, 0.1, r * 0.35, c1);
+      L.beam('solid', [r + 0.08, y0 + 0.15, 0], [r + 0.08, 0, 0], 0.05, col('#d9d9d9'));
+      break;
+    }
+    case 'waterTower': {
+      // Classic wooden rooftop water tower on steel legs.
+      const r = p.w ?? 1.6;
+      const legH = p.h ?? 2.5;
+      const s = r * 0.75;
+      for (const [sx, sz] of [[-s, -s], [s, -s], [s, s], [-s, s]]) L.beam('solid', [sx, 0, sz], [sx * 0.9, legH, sz * 0.9], 0.12, DARK);
+      L.beam('solid', [-s, legH * 0.5, -s], [s, legH * 0.5, s], 0.06, DARK);
+      L.beam('solid', [s, legH * 0.5, -s], [-s, legH * 0.5, s], 0.06, DARK);
+      L.shape('solid', SHAPES.cyl, 0, legH + 0.05, 0, r + 0.15, 0.1, r + 0.15, DARK);
+      const bh = r * 1.8;
+      L.shape('solid', SHAPES.cyl, 0, legH + 0.1 + bh / 2, 0, r, bh, r, c1);
+      for (const f of [0.2, 0.55, 0.9]) L.shape('solid', SHAPES.tube, 0, legH + 0.1 + bh * f, 0, r + 0.03, 0.06, r + 0.03, DARK);
+      L.shape('solid', SHAPES.cone, 0, legH + 0.1 + bh + r * 0.35, 0, r + 0.12, r * 0.7, r + 0.12, c2);
       break;
     }
     case 'solarPanels': {
@@ -229,7 +240,7 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
     case 'satelliteDish': {
       L.beam('solid', [0, 0, 0], [0, 0, -0.4], 0.05, STEEL);
       // flattened sphere tilted up and away from the wall
-      L.shape('solid', SHAPES.sphere, 0, 0.05, -0.45, 0.42, 0.1, 0.42, c1, new THREE.Vector3(0, 0.6, -1));
+      L.shape('solid', SHAPES.cylLow, 0, 0.05, -0.45, 0.42, 0.06, 0.42, c1, new THREE.Vector3(0, 0.6, -1));
       L.beam('solid', [0, 0.05, -0.45], [0, 0.3, -0.85], 0.025, STEEL);
       break;
     }
@@ -243,8 +254,7 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       L.box('glass', -0.78, 0.95, -0.9, 0.78, 1.45, 1.2, glass);
       L.box('solid', -0.8, 1.45, -0.75, 0.8, 1.52, 1.1, body);
       for (const [wx, wz] of [[-0.85, -1.35], [0.85, -1.35], [-0.85, 1.35], [0.85, 1.35]]) {
-        L.shape('solid', SHAPES.cyl, wx, 0.33, wz, 0.33, 0.24, 0.33, DARK, X);
-        L.shape('solid', SHAPES.cyl, wx + Math.sign(wx) * 0.01, 0.33, wz, 0.17, 0.24, 0.17, col('#b0b4b8'), X);
+        L.shape('solid', SHAPES.cylLow, wx, 0.33, wz, 0.33, 0.24, 0.33, DARK, X);
       }
       L.box('lamp', -0.8, 0.7, -2.16, -0.5, 0.82, -2.14, col('#f4f1e0'));
       L.box('lamp', 0.5, 0.7, -2.16, 0.8, 0.82, -2.14, col('#f4f1e0'));
@@ -255,7 +265,7 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
     case 'mailbox': {
       L.beam('solid', [0, 0, 0], [0, 1.0, 0], 0.08, WOOD);
       L.box('solid', -0.13, 1.0, -0.25, 0.13, 1.2, 0.25, c1);
-      L.shape('solid', SHAPES.cyl, 0, 1.2, 0, 0.13, 0.5, 0.13, c1, Z);
+      L.shape('solid', SHAPES.cylLow, 0, 1.2, 0, 0.13, 0.5, 0.13, c1, Z);
       L.box('solid', 0.13, 1.15, 0.05, 0.15, 1.35, 0.1, col('#c0392b')); // flag
       break;
     }
@@ -270,8 +280,6 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       for (const [sx, c] of [[-0.35, c1], [0.35, c2]] as const) {
         L.box('solid', sx - 0.28, 0.05, -0.3, sx + 0.28, 1.0, 0.3, c);
         L.box('solid', sx - 0.3, 1.0, -0.33, sx + 0.3, 1.06, 0.32, c.clone().multiplyScalar(0.85));
-        L.shape('solid', SHAPES.cyl, sx - 0.2, 0.1, 0.28, 0.09, 0.06, 0.09, DARK, X);
-        L.shape('solid', SHAPES.cyl, sx + 0.2, 0.1, 0.28, 0.09, 0.06, 0.09, DARK, X);
       }
       break;
     }
@@ -279,6 +287,28 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
 }
 
 const LAMP = col('#fff1cf');
+
+/** Far-LOD light: only the glowing part, so the city still sparkles at night. */
+export function drawLightFar(b: MeshBuilder, l: Light): void {
+  const L = new LocalFrame(b, l.x, l.y, l.z, l.rot);
+  switch (l.kind) {
+    case 'sconce':
+      L.box('lamp', -0.08, -0.12, -0.24, 0.08, 0.1, -0.1, LAMP);
+      break;
+    case 'ceiling':
+      L.box('lamp', -0.14, -0.11, -0.14, 0.14, -0.01, 0.14, LAMP);
+      break;
+    case 'bollard':
+      L.box('lamp', -0.065, 0.6, -0.065, 0.065, 0.72, 0.065, LAMP);
+      break;
+    case 'post':
+      L.box('lamp', -0.14, 2.0, -0.14, 0.14, 2.35, 0.14, LAMP);
+      break;
+    case 'streetLamp':
+      L.box('lamp', -0.16, 6.24, -1.8, 0.16, 6.3, -1.25, LAMP);
+      break;
+  }
+}
 
 export function drawLight(b: MeshBuilder, l: Light): void {
   const L = new LocalFrame(b, l.x, l.y, l.z, l.rot);
@@ -290,8 +320,8 @@ export function drawLight(b: MeshBuilder, l: Light): void {
       L.box('solid', -0.1, 0.1, -0.26, 0.1, 0.14, -0.08, DARK);
       break;
     case 'ceiling':
-      L.shape('lamp', SHAPES.cyl, 0, -0.06, 0, 0.14, 0.1, 0.14, LAMP);
-      L.shape('solid', SHAPES.cyl, 0, 0, 0, 0.16, 0.03, 0.16, DARK);
+      L.shape('lamp', SHAPES.cylLow, 0, -0.06, 0, 0.14, 0.1, 0.14, LAMP);
+      L.shape('solid', SHAPES.cylLow, 0, 0, 0, 0.16, 0.03, 0.16, DARK);
       break;
     case 'bollard':
       L.shape('solid', SHAPES.cylLow, 0, 0.3, 0, 0.07, 0.6, 0.07, DARK);

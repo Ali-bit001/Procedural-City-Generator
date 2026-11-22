@@ -136,7 +136,7 @@ export function addGroundAC(ctx: DetailContext, m: Mass): void {
 export function addSplitACs(ctx: DetailContext, count: number, sides: Opening['wall'][] = ['back', 'left', 'right']): void {
   const { rng, facade, masses, props } = ctx;
   const byId = new Map(masses.map((m) => [m.id, m]));
-  const windows = facade.openings.filter((o) => o.kind === 'window' && byId.has(o.massId) && sides.includes(o.wall) && o.height > 0.9);
+  const windows = facade.openings.filter((o) => o.kind === 'window' && byId.has(o.massId) && sides.includes(o.wall) && o.height > 0.9 && !o.balcony);
   for (let i = 0; i < count && windows.length; i++) {
     const o = windows.splice(rng.int(0, windows.length - 1), 1)[0];
     const m = byId.get(o.massId)!;
@@ -299,7 +299,7 @@ export function addWallMailbox(ctx: DetailContext, door: Opening, side: 1 | -1, 
 export function addWindowShades(facade: OpeningPlacer, massIds: number[], kind: 'slab' | 'awning', color: string): void {
   for (const o of facade.openings) {
     // Skip slits, garden-level and small attic windows.
-    if (o.kind !== 'window' || !massIds.includes(o.massId) || o.width < 0.7 || o.height < 0.95 || o.floor < 0) continue;
+    if (o.kind !== 'window' || o.balcony || !massIds.includes(o.massId) || o.width < 0.7 || o.height < 0.95 || o.floor < 0) continue;
     o.shade = { kind, color };
   }
 }

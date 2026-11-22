@@ -89,6 +89,57 @@ export const ROW_PALETTES: Record<RowStyle, RowPalette> = {
   },
 };
 
+export type MidriseStyle = 'southAsian' | 'mainStreet' | 'modern';
+
+export interface MidrisePalette {
+  walls: string[];
+  /** Floor-slab bands, sunshades, balcony slabs, cornices. */
+  bands: string[];
+  frames: string[];
+  signs: string[];
+  awnings: string[];
+  shutters: string[];
+  paving: string[];
+  roofs: string[];
+}
+
+export const MIDRISE_PALETTES: Record<MidriseStyle, MidrisePalette> = {
+  // Commercial "plaza" blocks common across Pakistan / South Asia: painted plaster, slab bands,
+  // chajjas, balconies, roller-shutter shops with big signboards, lots of water tanks.
+  southAsian: {
+    walls: ['#efe8da', '#e8dcc0', '#f2efe6', '#d9cfba', '#cfd8d4', '#e6d3b3', '#d8e2e8', '#f0e0d0', '#c9d3c0', '#e9d6c4'],
+    bands: ['#b8462f', '#2f5b8a', '#3f6f4f', '#7a4a2f', '#8a8a8a', '#c9a227', '#ffffff', '#5a5f66'],
+    frames: ['#3b3e42', '#6b4a33', '#e9e6df', '#2f5b8a'],
+    signs: ['#c0392b', '#1f6fb5', '#27ae60', '#f1c40f', '#ffffff', '#e67e22', '#8e44ad', '#16a085', '#2c3e50'],
+    awnings: ['#2e6b4a', '#1f3f73'],
+    shutters: ['#9aa0a6', '#8a8f96', '#6f7a83', '#7d8a96'],
+    paving: ['#b9b4aa', '#aaa59b'],
+    roofs: ['#9a958c', '#8f8b84'],
+  },
+  // European / US main street: brick, stone trims, cornices, shopfronts with awnings.
+  mainStreet: {
+    walls: ['#8b4a3a', '#9c5a45', '#7a3f33', '#a86a50', '#b98a6a', '#6f4a3f', '#c2a27f', '#d8c8a8'],
+    bands: ['#efe6d2', '#e9e2cf', '#d8cfb8'],
+    frames: ['#1f3b2f', '#2b2b2b', '#6a1f1f', '#1f2f4a', '#efe6d2'],
+    signs: ['#1f3b2f', '#6a1f1f', '#1f2f4a', '#2b2b2b', '#c9a648'],
+    awnings: ['#2e6b4a', '#8e1c1c', '#1f3f73', '#c9772b', '#2b2b2b'],
+    shutters: ['#5a5f66'],
+    paving: ['#b9b4aa', '#c4beb3'],
+    roofs: ['#5a5a58', '#4f4f4d'],
+  },
+  // Contemporary: panels + glass, ribbon windows or curtain walls, glass balconies.
+  modern: {
+    walls: ['#e9e9e6', '#d6d6d2', '#3b3e42', '#9da0a3', '#b4895e', '#f3f3f1'],
+    bands: ['#3b3e42', '#e9e9e6', '#26282b'],
+    frames: ['#26282b', '#9aa0a6'],
+    signs: ['#26282b', '#ffffff', '#c0392b', '#1f6fb5'],
+    awnings: ['#26282b'],
+    shutters: ['#5a5f66'],
+    paving: ['#d0cdc6', '#bdbab3'],
+    roofs: ['#6b6e72', '#5a5d61'],
+  },
+};
+
 /** Accent cladding for modern upper volumes (wood, charcoal, white). */
 export const MODERN_ACCENTS_DARK = ['#3b3e42', '#b4895e', '#2f3236', '#8c6a48'];
 export const MODERN_ACCENTS_LIGHT = ['#f3f3f1', '#d9d5cc', '#b4895e'];

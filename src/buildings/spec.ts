@@ -32,7 +32,7 @@ export interface RoofSpec {
   parapet: boolean;
 }
 
-export type MassKind = 'main' | 'wing' | 'garage' | 'upper' | 'unit' | 'bay';
+export type MassKind = 'main' | 'wing' | 'garage' | 'upper' | 'unit' | 'bay' | 'roofRoom';
 
 export interface Mass {
   id: number;
@@ -51,7 +51,25 @@ export interface Mass {
   floorBands?: boolean;
 }
 
-export type OpeningKind = 'window' | 'door' | 'garageDoor';
+export type OpeningKind = 'window' | 'door' | 'garageDoor' | 'shopfront' | 'sign';
+
+/**
+ * How the window shader paints an opening (see render/windowMaterial.ts).
+ * All of these are a single quad; frames, mullions, glass and glow are drawn in the shader.
+ */
+export type WindowStyle =
+  | 'plain'
+  | 'cross'
+  | 'casement'
+  | 'georgian'
+  | 'ribbon'
+  | 'curtain'
+  | 'shop'
+  | 'shutter'
+  | 'door'
+  | 'garage'
+  | 'sign'
+  | 'glassPanel';
 
 export interface Opening {
   kind: OpeningKind;
@@ -75,6 +93,10 @@ export interface Opening {
   shade?: { kind: 'slab' | 'awning'; color: string };
   /** Window glows at night. */
   lit?: boolean;
+  /** Shader style; defaults from kind / mullions. */
+  style?: WindowStyle;
+  /** Opens onto a balcony (no ACs or shades next to it). */
+  balcony?: boolean;
 }
 
 export interface Porch {
@@ -134,6 +156,7 @@ export type PropKind =
   | 'car'
   | 'mailbox'
   | 'wallMailbox'
+  | 'waterTower'
   | 'bins'
   | 'bench';
 
@@ -166,6 +189,21 @@ export interface Light {
   rot: number;
 }
 
+/** Cantilevered balcony slab on a wall, with a railing. */
+export interface Balcony {
+  cx: number;
+  cz: number;
+  nx: number;
+  nz: number;
+  width: number;
+  depth: number;
+  /** Top of the slab (= floor level of the room behind). */
+  y: number;
+  rail: 'iron' | 'glass' | 'solid';
+  color: string;
+  railColor: string;
+}
+
 export interface HouseModel {
   seed: number;
   style: string;
@@ -183,6 +221,9 @@ export interface HouseModel {
   fences: Fence[];
   trees: Tree[];
   pool?: Rect;
+  balconies: Balcony[];
+  /** Whole lot is paved (commercial) instead of lawn. */
+  paved?: boolean;
   props: Prop[];
   lights: Light[];
   /** x positions for street trees in the verge in front of the lot. */

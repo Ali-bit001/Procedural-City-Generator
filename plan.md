@@ -73,7 +73,7 @@ src/
 |---|---|---|---|---|
 | **Supertall/landmark** | Podium, tower, several setbacks, taper/twist | Curtain-wall glass | Spire, lit crown | height 250–500 m, taper, twist, number of setbacks |
 | **Office tower** | Podium plus box, rounded or chamfered tower | Curtain wall or grid | Flat roof, mechanical housing, antenna | floors 20–60, corner style |
-| **Mid-rise mixed-use** | Built to the lot edge, occasional upper setback | Shopfront ground floor, punched windows above | Parapet, AC units, water tank | floors 4–12, brick or modern |
+| **Mid-rise mixed-use** ✅ | Built to the lot edge, occasional upper setback | Shopfront ground floor, punched windows above | Parapet, AC units, water tank | floors 4–12, brick or modern |
 | **Apartment block** | Slab, point tower or courtyard | Punched windows, balconies | Flat roof, roof garden | floors 5–25, balcony style |
 | **Row house/townhouse** ✅ | Narrow joined boxes | Bay windows, stoops | Gable or flat roof, chimneys | width, colours, roof height variation |
 | **Suburban house** ✅ | Main block + wing + garage, or stacked volumes | Windows, door, porch | Gable, hip, shed or flat roof | style, floors, garage, wing, porch, pool |
@@ -90,12 +90,12 @@ src/
 |---|---|---|
 | **B0** | Building Lab setup: Vite + Three.js, OrbitControls, GUI (seed, count, style, sun), hover info, click to focus, seed in URL | ✅ Done |
 | **B1** | Massing core: polygon extrusion, insets, setbacks, taper, twist, podium + tower, courtyard | ⬜ |
-| **B2** | Floors and facade grammar, window shader (UV cells, frames, glass), special ground floor | ⬜ |
+| **B2** | Floors and facade grammar, window shader (UV cells, frames, glass), special ground floor | ✅ Done (window shader) |
 | **B3** | Roofs: flat + parapet, gable, hip, sawtooth, tower crowns, rooftop clutter | ⬜ (gable/hip/shed/flat done for houses) |
-| **B4** | Modern core types: office tower, supertall, mid-rise mixed-use, apartment block (the skyline) | ⬜ |
+| **B4** | Modern core types: office tower, supertall, mid-rise mixed-use, apartment block (the skyline) | 🟨 Mid-rise done |
 | **B5** | Low-rise types: **row house ✅**, **suburban house ✅**, shop, warehouse, factory | 🟨 In progress |
 | **B6** | Style system: palettes, realistic/stylized switch, material variation, night mode with lit windows | ⬜ |
-| **B7** | Details and LOD: balconies, awnings, signs, fire escapes, LOD0/1/2, merging, instancing | ⬜ |
+| **B7** | Details and LOD: balconies, awnings, signs, fire escapes, LOD0/1/2, merging, instancing | 🟨 Chunks + 2 LODs done |
 | **B8** | Stress test: 30×30 grid of random buildings at 60 fps, set the performance budget | ⬜ |
 | **B9** | Civic templates: hospital, school, stadium, station, parking garage | ⬜ |
 | **B10** | City integration (after roads and blocks exist): lots feed `BuildingSpec`s into the same generators | ⬜ |
@@ -126,8 +126,6 @@ Yard     -> Lawn + Fence/Hedge + Trees + Shrubs [+ Pool]
 - **Lab:** 20 houses (adjustable) on a street, numbered labels, hover tooltip, click to focus.
 - **Checked:** 500 houses generated headless with no broken geometry, every house has a door, about 2.8k triangles per house.
 
-## Next
-Waiting on feedback for the suburban house, then the next building type.
 
 ## Done: Row houses / townhouses
 
@@ -155,3 +153,44 @@ File: `src/buildings/details/details.ts` (placement), `src/buildings/mesher/prop
 - **Lights:** door sconces, porch ceiling lights, garage lights, back-door lights, path bollards, lamp posts, street lamps.
 - **Night mode:** lamps and some windows glow, with bloom.
 - **Lab sliders:** water tank frequency, yard prop density, parked car chance.
+
+## Done: Mid-rise mixed-use
+
+File: `src/buildings/types/midrise.ts`.
+
+```
+Lot      -> Building at the sidewalk + paved service yard behind
+Building -> Ground floor (retail) + Upper block [+ recessed top floor] + Roof room
+Ground   -> Lobby door + Shops (shopfront | roller shutter) + Signs [+ awnings]
+Upper    -> Floors x Bays -> Window | Balcony door + Balcony (+ sunshades, split ACs)
+Roof     -> Parapet + stair room + water tanks / water tower / AC units / solar / clotheslines
+```
+
+- **South Asian plaza:** upper floors projecting over the shops, slab bands, chajjas, iron or solid balconies, roller shutters, big glowing signboards, many tanks (also on the stair room), split ACs on every side, rooftop clotheslines.
+- **Main street:** brick, cornice, string courses, Georgian windows, shopfront fascia signs, striped awnings, wooden rooftop water tower.
+- **Modern:** ribbon windows or full curtain wall, glass balconies, recessed top floor, rooftop AC units and solar.
+
+## Done: Rendering optimisation (applies to every building type)
+
+Files: `src/render/windowMaterial.ts`, `src/render/materials.ts`, `src/render/chunks.ts`, `src/buildings/mesher/lotMesher.ts`.
+
+- **Facade shader:** every window, door, garage door, shopfront, roller shutter, sign and glass railing is one quad. Frames, mullions, glass reflections, curtains and night glow are painted in the shader.
+- **Cut-out quads:** picket fences and iron railings are single see-through quads; their shadows keep the gaps.
+- **6 materials, merged per chunk:** solid, window, cutout, glass, water, lamp. Lots are merged into 64 m chunks, about 6 draw calls per chunk.
+- **2 LODs per chunk:** the far level drops props, frames, railings and fixtures but keeps silhouettes, facades, trees, water tanks and glowing lamp heads.
+- **Hidden faces skipped:** box faces against walls, the ground or roofs are never emitted.
+- **Cheap picking:** per-lot bounding boxes, no triangle raycasts.
+- **Static shadows, on-demand rendering, quality presets.**
+
+| Lot type | Before | LOD 0 (near) | LOD 1 (far) |
+|---|---|---|---|
+| Suburban house | ~4,600 tris | ~2,000 | ~550 |
+| Row houses (6–7 units) | ~17,500 | ~7,000 | ~1,900 |
+| Mid-rise | — | ~3,200 | ~1,400 |
+
+A 60-lot street (~1 km): 122 draw calls, ~105k triangles drawn, generated and meshed in ~0.3 s.
+
+**Budget left for the pseudo-simulation:** pedestrians and cars should be `InstancedMesh` (one draw call per model type), moved on the CPU along sidewalk / lane paths, with only nearby instances animated.
+
+## Next
+Waiting on feedback for the mid-rise, then the next building type.

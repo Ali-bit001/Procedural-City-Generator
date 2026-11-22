@@ -498,6 +498,7 @@ export function generateHouse(spec: HouseSpec): HouseModel {
     fences,
     trees,
     pool,
+    balconies: [],
     props,
     lights,
     streetTreeXs,

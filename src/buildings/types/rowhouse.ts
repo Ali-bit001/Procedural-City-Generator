@@ -437,6 +437,7 @@ export function generateRowhouses(spec: RowhouseSpec): HouseModel {
     paths,
     fences,
     trees,
+    balconies: [],
     props,
     lights,
     streetTreeXs,

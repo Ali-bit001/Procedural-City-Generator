@@ -1,19 +1,37 @@
 import * as THREE from 'three';
 
 /**
- * Accumulates flat-shaded, vertex-coloured triangles into a few buckets
- * (one draw call per bucket), so a whole house is ~3 draw calls.
+ * Accumulates flat-shaded, vertex-coloured triangles into a few buckets (one draw call per bucket).
+ * Lots are built in lot-local space, then merged into chunk builders with `appendFrom`.
+ *
+ *   solid  - walls, roofs, props (vertex colours)
+ *   window - facade quads painted by the window shader (windows, doors, shopfronts, signs)
+ *   cutout - see-through quads (picket / iron fences, railings), alpha-cut in the shader
+ *   glass  - reflective prop glass (car windows, solar panels)
+ *   water  - pools
+ *   lamp   - light sources (emissive at night)
  */
-export type BucketName = 'solid' | 'glass' | 'glassLit' | 'water' | 'lamp';
+export type BucketName = 'solid' | 'window' | 'cutout' | 'glass' | 'water' | 'lamp';
+
+/** Buckets that carry facade-shader attributes (aUvM, aWin). */
+const FACADE: ReadonlySet<BucketName> = new Set<BucketName>(['window', 'cutout']);
 
 interface Bucket {
   pos: number[];
   nor: number[];
   col: number[];
+  uvm?: number[];
+  win?: number[];
 }
+
+/** Face flags for `box(..., skip)`. Hidden faces are simply not emitted. */
+export const FACE = { NY: 1, PY: 2, NX: 4, PX: 8, NZ: 16, PZ: 32 } as const;
 
 type V3 = THREE.Vector3;
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+const _e1 = new THREE.Vector3();
+const _e2 = new THREE.Vector3();
+const _n = new THREE.Vector3();
 
 const colorCache = new Map<string, THREE.Color>();
 export function col(hex: string): THREE.Color {
@@ -32,6 +50,10 @@ export class MeshBuilder {
     let b = this.buckets.get(name);
     if (!b) {
       b = { pos: [], nor: [], col: [] };
+      if (FACADE.has(name)) {
+        b.uvm = [];
+        b.win = [];
+      }
       this.buckets.set(name, b);
     }
     return b;
@@ -39,40 +61,70 @@ export class MeshBuilder {
 
   /** Triangle; if `hint` is given the winding is flipped so the normal faces along it. */
   tri(bucket: BucketName, a: V3, b: V3, c: V3, color: THREE.Color, hint?: V3): void {
-    const n = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a));
-    if (n.lengthSq() < 1e-12) return;
-    n.normalize();
-    if (hint && n.dot(hint) < 0) {
+    _n.crossVectors(_e1.subVectors(b, a), _e2.subVectors(c, a));
+    if (_n.lengthSq() < 1e-12) return;
+    _n.normalize();
+    if (hint && _n.dot(hint) < 0) {
       [b, c] = [c, b];
-      n.negate();
+      _n.negate();
     }
     const bk = this.bucket(bucket);
     for (const p of [a, b, c]) {
       bk.pos.push(p.x, p.y, p.z);
-      bk.nor.push(n.x, n.y, n.z);
+      bk.nor.push(_n.x, _n.y, _n.z);
       bk.col.push(color.r, color.g, color.b);
+      bk.uvm?.push(0, 0);
+      bk.win?.push(0, 0, 0, 0);
     }
   }
 
   /** Quad given as a cyclic sequence a-b-c-d. */
   quad(bucket: BucketName, a: V3, b: V3, c: V3, d: V3, color: THREE.Color, hint?: V3): void {
-    if (!hint) {
-      hint = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a));
-    }
+    if (!hint) hint = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a));
     this.tri(bucket, a, b, c, color, hint);
     this.tri(bucket, a, c, d, color, hint);
   }
 
-  box(bucket: BucketName, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, color: THREE.Color): void {
+  /**
+   * Facade quad for the window shader. Corners: bottom-left, bottom-right, top-right, top-left
+   * (as seen from outside). `w`,`h` are its size in metres; `style` a STYLE_ID; `litSeed` = lit + seed.
+   */
+  winQuad(bucket: 'window' | 'cutout', bl: V3, br: V3, tr: V3, tl: V3, color: THREE.Color, w: number, h: number, style: number, litSeed: number, normal: V3): void {
+    const bk = this.bucket(bucket);
+    const verts: [V3, number, number][] = [
+      [bl, 0, 0], [br, w, 0], [tr, w, h],
+      [bl, 0, 0], [tr, w, h], [tl, 0, h],
+    ];
+    // Make the winding face `normal`.
+    _n.crossVectors(_e1.subVectors(br, bl), _e2.subVectors(tr, bl));
+    const flip = _n.dot(normal) < 0;
+    const order = flip ? [0, 2, 1, 3, 5, 4] : [0, 1, 2, 3, 4, 5];
+    const n = normal.clone().normalize();
+    for (const i of order) {
+      const [p, u, vv] = verts[i];
+      bk.pos.push(p.x, p.y, p.z);
+      bk.nor.push(n.x, n.y, n.z);
+      bk.col.push(color.r, color.g, color.b);
+      bk.uvm!.push(u, vv);
+      bk.win!.push(w, h, style, litSeed);
+    }
+  }
+
+  /**
+   * Axis-aligned box. `skip` is a FACE bitmask of faces that are hidden (against a wall, on the
+   * ground, under a roof...). Bottom faces resting on the ground are skipped automatically.
+   */
+  box(bucket: BucketName, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, color: THREE.Color, skip = 0): void {
     if (x0 > x1) [x0, x1] = [x1, x0];
     if (y0 > y1) [y0, y1] = [y1, y0];
     if (z0 > z1) [z0, z1] = [z1, z0];
-    this.quad(bucket, v(x0, y1, z0), v(x1, y1, z0), v(x1, y1, z1), v(x0, y1, z1), color, v(0, 1, 0));
-    this.quad(bucket, v(x0, y0, z0), v(x1, y0, z0), v(x1, y0, z1), v(x0, y0, z1), color, v(0, -1, 0));
-    this.quad(bucket, v(x0, y0, z0), v(x1, y0, z0), v(x1, y1, z0), v(x0, y1, z0), color, v(0, 0, -1));
-    this.quad(bucket, v(x0, y0, z1), v(x1, y0, z1), v(x1, y1, z1), v(x0, y1, z1), color, v(0, 0, 1));
-    this.quad(bucket, v(x0, y0, z0), v(x0, y0, z1), v(x0, y1, z1), v(x0, y1, z0), color, v(-1, 0, 0));
-    this.quad(bucket, v(x1, y0, z0), v(x1, y0, z1), v(x1, y1, z1), v(x1, y1, z0), color, v(1, 0, 0));
+    if (y0 <= 0.06) skip |= FACE.NY;
+    if (!(skip & FACE.PY)) this.quad(bucket, v(x0, y1, z0), v(x1, y1, z0), v(x1, y1, z1), v(x0, y1, z1), color, v(0, 1, 0));
+    if (!(skip & FACE.NY)) this.quad(bucket, v(x0, y0, z0), v(x1, y0, z0), v(x1, y0, z1), v(x0, y0, z1), color, v(0, -1, 0));
+    if (!(skip & FACE.NZ)) this.quad(bucket, v(x0, y0, z0), v(x1, y0, z0), v(x1, y1, z0), v(x0, y1, z0), color, v(0, 0, -1));
+    if (!(skip & FACE.PZ)) this.quad(bucket, v(x0, y0, z1), v(x1, y0, z1), v(x1, y1, z1), v(x0, y1, z1), color, v(0, 0, 1));
+    if (!(skip & FACE.NX)) this.quad(bucket, v(x0, y0, z0), v(x0, y0, z1), v(x0, y1, z1), v(x0, y1, z0), color, v(-1, 0, 0));
+    if (!(skip & FACE.PX)) this.quad(bucket, v(x1, y0, z0), v(x1, y0, z1), v(x1, y1, z1), v(x1, y1, z0), color, v(1, 0, 0));
   }
 
   /** A quad extruded upward by `t` into a slab (thick roof planes). */
@@ -90,8 +142,7 @@ export class MeshBuilder {
     ];
     for (const [p, q, r, s] of ring) {
       const mid = p.clone().add(q).multiplyScalar(0.5);
-      const hint = mid.sub(centre).setY(0);
-      this.quad(bucket, p, q, r, s, color, hint);
+      this.quad(bucket, p, q, r, s, color, mid.sub(centre).setY(0));
     }
   }
 
@@ -109,6 +160,29 @@ export class MeshBuilder {
       bk.pos.push(p.x, p.y, p.z);
       bk.nor.push(n.x, n.y, n.z);
       bk.col.push(color.r, color.g, color.b);
+      bk.uvm?.push(0, 0);
+      bk.win?.push(0, 0, 0, 0);
+    }
+  }
+
+  /** Merge another builder's triangles into this one, transformed by `matrix` (lot -> chunk space). */
+  appendFrom(src: MeshBuilder, matrix: THREE.Matrix4): void {
+    const nm = new THREE.Matrix3().getNormalMatrix(matrix);
+    const e = matrix.elements;
+    const ne = nm.elements;
+    for (const [name, s] of src.buckets) {
+      const d = this.bucket(name);
+      const P = s.pos;
+      const N = s.nor;
+      for (let i = 0; i < P.length; i += 3) {
+        const x = P[i], y = P[i + 1], z = P[i + 2];
+        d.pos.push(e[0] * x + e[4] * y + e[8] * z + e[12], e[1] * x + e[5] * y + e[9] * z + e[13], e[2] * x + e[6] * y + e[10] * z + e[14]);
+        const nx = N[i], ny = N[i + 1], nz = N[i + 2];
+        d.nor.push(ne[0] * nx + ne[3] * ny + ne[6] * nz, ne[1] * nx + ne[4] * ny + ne[7] * nz, ne[2] * nx + ne[5] * ny + ne[8] * nz);
+      }
+      for (const c of s.col) d.col.push(c);
+      if (s.uvm && d.uvm) for (const u of s.uvm) d.uvm.push(u);
+      if (s.win && d.win) for (const w of s.win) d.win.push(w);
     }
   }
 
@@ -118,7 +192,11 @@ export class MeshBuilder {
     return n;
   }
 
-  build(materials: Record<BucketName, THREE.Material>): THREE.Group {
+  trianglesIn(name: BucketName): number {
+    return (this.buckets.get(name)?.pos.length ?? 0) / 9;
+  }
+
+  build(materials: Record<BucketName, THREE.Material>, depthMaterials: Partial<Record<BucketName, THREE.Material>> = {}): THREE.Group {
     const group = new THREE.Group();
     for (const [name, b] of this.buckets) {
       if (!b.pos.length) continue;
@@ -126,11 +204,16 @@ export class MeshBuilder {
       g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3));
       g.setAttribute('normal', new THREE.Float32BufferAttribute(b.nor, 3));
       g.setAttribute('color', new THREE.Float32BufferAttribute(b.col, 3));
+      if (b.uvm) g.setAttribute('aUvM', new THREE.Float32BufferAttribute(b.uvm, 2));
+      if (b.win) g.setAttribute('aWin', new THREE.Float32BufferAttribute(b.win, 4));
       g.computeBoundingSphere();
       const mesh = new THREE.Mesh(g, materials[name]);
-      mesh.castShadow = name !== 'water' && name !== 'lamp';
-      mesh.receiveShadow = true;
+      // Facade quads lie flat on walls and lamps are tiny: neither needs to cast shadows.
+      mesh.castShadow = name === 'solid' || name === 'cutout' || name === 'glass';
+      mesh.receiveShadow = name !== 'lamp';
+      if (depthMaterials[name]) mesh.customDepthMaterial = depthMaterials[name];
       mesh.name = name;
+      mesh.matrixAutoUpdate = false;
       group.add(mesh);
     }
     return group;
@@ -145,7 +228,6 @@ function flat(g: THREE.BufferGeometry): THREE.BufferGeometry {
 }
 export const TEMPLATES = {
   blob: flat(new THREE.IcosahedronGeometry(1, 0)),
-  blobSmooth: flat(new THREE.IcosahedronGeometry(1, 1)),
   cone: flat(new THREE.ConeGeometry(1, 1, 7)),
 };
 
@@ -153,11 +235,13 @@ const smooth = (g: THREE.BufferGeometry) => (g.index ? g.toNonIndexed() : g);
 export const SHAPES = {
   box: smooth(new THREE.BoxGeometry(1, 1, 1)),
   /** Unit cylinder: radius 1, height 1, centred on the origin, axis +y. */
-  cyl: smooth(new THREE.CylinderGeometry(1, 1, 1, 14)),
+  cyl: smooth(new THREE.CylinderGeometry(1, 1, 1, 10)),
   cylLow: smooth(new THREE.CylinderGeometry(1, 1, 1, 6)),
+  /** Open-ended ring (no caps): hoops, ribs, rims. */
+  tube: smooth(new THREE.CylinderGeometry(1, 1, 1, 10, 1, true)),
   /** Unit cone: radius 1, height 1, apex +y. */
-  cone: smooth(new THREE.ConeGeometry(1, 1, 12)),
-  sphere: smooth(new THREE.SphereGeometry(1, 10, 6)),
+  cone: smooth(new THREE.ConeGeometry(1, 1, 10)),
+  sphere: smooth(new THREE.SphereGeometry(1, 8, 5)),
 };
 
 const _Y = new THREE.Vector3(0, 1, 0);
