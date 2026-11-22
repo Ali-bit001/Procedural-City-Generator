@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Building Lab — Suburban Houses</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #bcd6e8; font-family: system-ui, sans-serif; }
+      #app { position: fixed; inset: 0; }
+      .house-label { padding: 2px 7px; border-radius: 10px; background: rgba(20,24,30,.75); color: #fff; font-size: 12px; font-weight: 600; pointer-events: none; }
+      #tooltip { position: fixed; pointer-events: none; padding: 6px 9px; border-radius: 6px; background: rgba(20,24,30,.88); color: #fff; font-size: 12px; line-height: 1.45; display: none; white-space: nowrap; z-index: 10; }
+      #hint { position: fixed; left: 12px; bottom: 10px; color: #1d2833; font-size: 12px; opacity: .8; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="tooltip"></div>
+    <div id="hint">Drag to orbit · scroll to zoom · click a house to focus · hover for details</div>
+    <script type="module" src="/src/lab/main.ts"></script>
+  </body>
+</html>
