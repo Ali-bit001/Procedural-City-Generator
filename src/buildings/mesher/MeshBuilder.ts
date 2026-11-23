@@ -304,6 +304,12 @@ export class LocalFrame {
     this.put(bucket, SHAPES.box, A.add(B).multiplyScalar(0.5), q, new THREE.Vector3(t, len, t), c);
   }
 
+  /** Facade-shader quad in local space (bl, br, tr, tl), e.g. a rooftop sign. */
+  winQuad(bucket: 'window' | 'cutout', pts: [number, number, number][], c: THREE.Color, w: number, h: number, style: number, litSeed: number, normal: [number, number, number]): void {
+    const [bl, br, tr, tl] = pts.map(([x, y, z]) => this.p(x, y, z));
+    this.b.winQuad(bucket, bl, br, tr, tl, c, w, h, style, litSeed, this.dir(...normal));
+  }
+
   /** Flat polygon (3 or 4 local points). `hint` is a local direction the face should point to. */
   poly(bucket: BucketName, pts: [number, number, number][], c: THREE.Color, hint?: [number, number, number]): void {
     const P = pts.map(([x, y, z]) => this.p(x, y, z));

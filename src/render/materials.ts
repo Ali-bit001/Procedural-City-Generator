@@ -15,7 +15,15 @@ export interface CityMaterials {
 export function createCityMaterials(): CityMaterials {
   const night = { value: 0 };
   const facade = createFacadeMaterials(night);
-  const lamp = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, emissive: '#ffd59a', emissiveIntensity: 0 });
+  // Lamps glow in their own vertex colour (warm street lights, red aviation lights, green helipad lights).
+  const lamp = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, emissive: '#ffffff', emissiveIntensity: 0 });
+  lamp.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <emissivemap_fragment>',
+      '#include <emissivemap_fragment>\ntotalEmissiveRadiance *= vColor.rgb;',
+    );
+  };
+  lamp.customProgramCacheKey = () => 'lamp-vertex-emissive';
   const materials: Record<BucketName, THREE.Material> = {
     solid: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0, side: THREE.DoubleSide }),
     window: facade.window,

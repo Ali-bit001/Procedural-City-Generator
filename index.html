@@ -9,13 +9,13 @@
       #app { position: fixed; inset: 0; }
       .house-label { padding: 2px 7px; border-radius: 10px; background: rgba(20,24,30,.75); color: #fff; font-size: 12px; font-weight: 600; pointer-events: none; }
       #tooltip { position: fixed; pointer-events: none; padding: 6px 9px; border-radius: 6px; background: rgba(20,24,30,.88); color: #fff; font-size: 12px; line-height: 1.45; display: none; white-space: nowrap; z-index: 10; }
-      #hint { position: fixed; left: 12px; bottom: 10px; color: #1d2833; font-size: 12px; opacity: .8; }
+      #hint { position: fixed; left: 12px; bottom: 10px; color: #fff; background: rgba(20,24,30,.55); padding: 4px 9px; border-radius: 6px; font-size: 12px; }
     </style>
   </head>
   <body>
     <div id="app"></div>
     <div id="tooltip"></div>
-    <div id="hint">Drag to orbit · scroll to zoom · click a house to focus · hover for details</div>
+    <div id="hint">Drag: orbit · Right-drag: pan · Scroll: zoom to cursor · WASD / arrows: move · Q / E: down / up · Shift: faster · Click a building to focus · Hover for details</div>
     <script type="module" src="/src/lab/main.ts"></script>
   </body>
 </html>

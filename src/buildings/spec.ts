@@ -69,7 +69,9 @@ export type WindowStyle =
   | 'door'
   | 'garage'
   | 'sign'
-  | 'glassPanel';
+  | 'glassPanel'
+  /** Punched windows in a concrete / stone frame, one quad per floor. */
+  | 'grid';
 
 export interface Opening {
   kind: OpeningKind;
@@ -157,6 +159,15 @@ export type PropKind =
   | 'mailbox'
   | 'wallMailbox'
   | 'waterTower'
+  | 'helipad'
+  | 'spire'
+  | 'cellTower'
+  | 'antennaCluster'
+  | 'bigDish'
+  | 'coolingTower'
+  | 'bmu'
+  | 'flagpole'
+  | 'roofSign'
   | 'bins'
   | 'bench';
 
@@ -178,7 +189,7 @@ export interface Prop {
   h?: number;
 }
 
-export type LightKind = 'sconce' | 'ceiling' | 'bollard' | 'post' | 'streetLamp';
+export type LightKind = 'sconce' | 'ceiling' | 'bollard' | 'post' | 'streetLamp' | 'aviation';
 
 export interface Light {
   kind: LightKind;
@@ -204,6 +215,29 @@ export interface Balcony {
   railColor: string;
 }
 
+/**
+ * Extruded convex polygon (towers). Footprint is lot-local [x, z] points, counter-clockwise seen
+ * from above. The facade is drawn as one shader quad per edge per floor.
+ */
+export interface PolyMass {
+  poly: [number, number][];
+  baseY: number;
+  floors: number;
+  floorHeight: number;
+  /** Facade shader style for the upper floors (curtain / grid / ribbon) and the frame colour. */
+  facade: WindowStyle;
+  frameColor: string;
+  /** Ground-floor lobby glazing instead of the facade style. */
+  lobby?: boolean;
+  roofColor: string;
+  /** Chance a whole floor is lit at night (offices light up floor by floor). */
+  litChance: number;
+  /** Glowing band around the top (lit crown). */
+  crownLight?: boolean;
+  /** Flat roof gets a parapet. */
+  parapet: boolean;
+}
+
 export interface HouseModel {
   seed: number;
   style: string;
@@ -224,6 +258,10 @@ export interface HouseModel {
   balconies: Balcony[];
   /** Whole lot is paved (commercial) instead of lawn. */
   paved?: boolean;
+  /** Tower volumes (extruded polygons). */
+  polyMasses?: PolyMass[];
+  /** Overall height incl. spires (for bounds / labels), if taller than the masses. */
+  height?: number;
   props: Prop[];
   lights: Light[];
   /** x positions for street trees in the verge in front of the lot. */

@@ -140,6 +140,25 @@ export const MIDRISE_PALETTES: Record<MidriseStyle, MidrisePalette> = {
   },
 };
 
+export type TowerStyle = 'glass' | 'stone';
+
+export const TOWER_PALETTES: Record<TowerStyle, { frames: string[]; roofs: string[]; podium: string[]; paving: string[] }> = {
+  // Curtain-wall towers: the frame colour also tints the glass (silver-blue, dark, teal, bronze, green).
+  glass: {
+    frames: ['#9fb4bf', '#2f3a44', '#5a7a8a', '#7a6a52', '#c9ccd1', '#3f5f52', '#4a5866'],
+    roofs: ['#6b6e72', '#5a5d61'],
+    podium: ['#3b3e42', '#9da0a3', '#e9e9e6'],
+    paving: ['#d0cdc6', '#c4beb3', '#bdb8ae'],
+  },
+  // Punched windows in a stone / concrete frame.
+  stone: {
+    frames: ['#d8d2c4', '#c9c0ae', '#e6e2d8', '#a9a39a', '#b59b7c', '#bfb8aa', '#8f8a83'],
+    roofs: ['#6b6e72', '#7a776f'],
+    podium: ['#d8d2c4', '#a9a39a', '#3b3e42'],
+    paving: ['#c4beb3', '#b9b4aa'],
+  },
+};
+
 /** Accent cladding for modern upper volumes (wood, charcoal, white). */
 export const MODERN_ACCENTS_DARK = ['#3b3e42', '#b4895e', '#2f3236', '#8c6a48'];
 export const MODERN_ACCENTS_LIGHT = ['#f3f3f1', '#d9d5cc', '#b4895e'];

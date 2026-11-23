@@ -261,9 +261,12 @@ export function generateMidrise(spec: MidriseSpec): HouseModel {
       for (const dz of rng.chance(0.5) ? [-0.9, 0.9] : [0]) props.push({ kind: 'waterTank', x: cx, y: massTop(room) + 0.3, z: cz + dz, rot: 0, color: tankColor(), w: 0.6, h: 0.15 });
     }
     if (rng.chance(0.5 * details.props)) roofProp('clothesline', 4.6, 0.9, { color: '#9aa0a6' }, [0, Math.PI / 2]);
+    // Rooftop telecom masts are a common sight on South Asian commercial blocks.
+    if (rng.chance(0.18)) roofProp('cellTower', 2.6, 2.6, { color: '#b8bcc0', h: rng.range(8, 14) });
   } else if (MS) {
     if (rng.chance(0.35 * Math.max(details.waterTanks * 2, 0.5))) roofProp('waterTower', 4, 4, { color: '#7a5a3f', color2: '#3b3632', w: 1.6, h: 2.6 });
     for (let i = rng.int(2, 4); i > 0; i--) roofProp('acUnit', 1.2, 1.2, {}, [0, Math.PI]);
+    if (rng.chance(0.25)) roofProp('antennaCluster', 2.8, 2.8, { color: '#8a8f96', h: rng.range(4, 7) });
   } else {
     for (let i = rng.int(3, 6); i > 0; i--) roofProp('acUnit', 1.2, 1.2, {}, [0, Math.PI]);
     addSolarPanels({ ...ctx, masses: [roofMass] }, 0.5);

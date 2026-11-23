@@ -11,11 +11,12 @@ import { RNG, hashSeed } from '../core/rng';
 import { generateHouse } from '../buildings/types/house';
 import { generateRowhouses } from '../buildings/types/rowhouse';
 import { generateMidrise } from '../buildings/types/midrise';
+import { generateTower, type TowerDesign } from '../buildings/types/tower';
 import { drawLight } from '../buildings/mesher/propMesher';
 import { MeshBuilder, col } from '../buildings/mesher/MeshBuilder';
 import { createCityMaterials } from '../render/materials';
 import { ChunkManager, type LotInstance } from '../render/chunks';
-import type { HouseStyle, MidriseStyle, RowStyle } from '../buildings/styles/palettes';
+import type { HouseStyle, MidriseStyle, RowStyle, TowerStyle } from '../buildings/styles/palettes';
 import type { DetailOptions, HouseModel } from '../buildings/spec';
 
 // URL options (handy for sharing a view): ?seed=1337&type=mid-rise&night=1&lots=20&cam=x,y,z,tx,ty,tz
@@ -51,11 +52,21 @@ scene.environmentIntensity = 0.35;
 
 const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 1500);
 // Default view: from beyond the end of the street, looking down it at both rows of front facades.
-const homePos = () => new THREE.Vector3(-streetLength / 2 - 45, 42, 20);
-const homeTarget = () => new THREE.Vector3(-streetLength / 2 + 70, 4, -2);
+// Pulls back and up when the street has tall buildings, so towers fit in the frame.
+let skyline = 20;
+const homePos = () => {
+  const k = Math.max(0, skyline - 30);
+  return new THREE.Vector3(-streetLength / 2 - 45 - k * 0.9, 42 + k * 0.55, 20 + k * 0.5);
+};
+const homeTarget = () => new THREE.Vector3(-streetLength / 2 + 70, 4 + Math.max(0, skyline - 30) * 0.35, -2);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.maxPolarAngle = Math.PI * 0.48;
+controls.maxPolarAngle = Math.PI * 0.49;
+// Right-drag / two-finger drag pans along the ground; scrolling zooms towards the cursor.
+controls.screenSpacePanning = false;
+controls.zoomToCursor = true;
+controls.minDistance = 1;
+controls.maxDistance = 1500;
 const camParam = url.get('cam')?.split(',').map(Number);
 const customCam = camParam?.length === 6 && camParam.every(Number.isFinite);
 if (customCam && camParam) {
@@ -114,9 +125,9 @@ function applyQuality(q: Quality): void {
 
 // ---------------------------------------------------------------- params / GUI
 
-type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise';
+type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'office towers';
 const urlSeed = Number(url.get('seed'));
-const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise'];
+const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'office towers'];
 const params = {
   seed: Number.isFinite(urlSeed) && urlSeed > 0 ? urlSeed : 1337,
   type: (TYPES.find((t) => t === url.get('type')) ?? 'mixed street') as BuildingType,
@@ -124,6 +135,8 @@ const params = {
   houseStyle: 'mixed' as 'mixed' | HouseStyle,
   rowStyle: 'mixed' as 'mixed' | RowStyle,
   midriseStyle: 'mixed' as 'mixed' | MidriseStyle,
+  towerStyle: 'mixed' as 'mixed' | TowerStyle,
+  towerDesign: (url.get('design') ?? 'mixed') as 'mixed' | TowerDesign,
   waterTanks: 0.4,
   props: 1,
   cars: 0.5,
@@ -139,16 +152,19 @@ const params = {
     regenerate();
   },
   overview: () => focusOn(null),
+  streetView: () => streetView(),
 };
 
 const gui = new GUI({ title: 'Building Lab' });
 gui.add(params, 'seed', 1, 99999, 1).onFinishChange(regenerate);
 gui.add(params, 'newSeed').name('🎲 New seed');
-gui.add(params, 'type', ['mixed street', 'suburban houses', 'row houses', 'mid-rise']).name('building type').onChange(regenerate);
+gui.add(params, 'type', TYPES).name('building type').onChange(regenerate);
 gui.add(params, 'count', 4, 60, 2).name('lots').onFinishChange(regenerate);
 gui.add(params, 'houseStyle', ['mixed', 'traditional', 'ranch', 'modern']).name('house style').onChange(regenerate);
 gui.add(params, 'rowStyle', ['mixed', 'brownstone', 'terrace', 'modernTown']).name('row style').onChange(regenerate);
 gui.add(params, 'midriseStyle', ['mixed', 'southAsian', 'mainStreet', 'modern']).name('mid-rise style').onChange(regenerate);
+gui.add(params, 'towerStyle', ['mixed', 'glass', 'stone']).name('tower style').onChange(regenerate);
+gui.add(params, 'towerDesign', ['mixed', 'classic', 'spiral', 'flame', 'stacked', 'rotating', 'yTower']).name('tower design').onChange(regenerate);
 const det = gui.addFolder('Details');
 det.add(params, 'waterTanks', 0, 1, 0.05).name('water tanks').onFinishChange(regenerate);
 det.add(params, 'props', 0, 2, 0.1).name('yard props').onFinishChange(regenerate);
@@ -167,6 +183,7 @@ view.add(params, 'labels').onChange((v: boolean) => {
 view.add(params, 'sunAzimuth', 0, 360, 1).name('sun azimuth').onChange(updateSun);
 view.add(params, 'sunElevation', 5, 85, 1).name('sun elevation').onChange(updateSun);
 gui.add(params, 'overview').name('↺ Overview');
+gui.add(params, 'streetView').name('🚶 Street view');
 const statsEl = document.createElement('div');
 statsEl.style.cssText = 'padding:6px 8px;font-size:11px;opacity:.85;line-height:1.5';
 gui.domElement.appendChild(statsEl);
@@ -219,7 +236,7 @@ const labels = new THREE.Group();
 scene.add(labels);
 const groundMat = new THREE.MeshStandardMaterial({ color: '#86a862', roughness: 1 });
 
-type LotKind = 'house' | 'row' | 'midrise';
+type LotKind = 'house' | 'row' | 'midrise' | 'tower';
 interface LotPlan {
   kind: LotKind;
   w: number;
@@ -231,17 +248,20 @@ function planLot(rng: RNG): LotPlan {
     params.type === 'suburban houses' ? 'house'
       : params.type === 'row houses' ? 'row'
         : params.type === 'mid-rise' ? 'midrise'
-          : rng.weighted<LotKind>([['house', 45], ['row', 30], ['midrise', 25]]);
+          : params.type === 'office towers' ? 'tower'
+            : rng.weighted<LotKind>([['house', 40], ['row', 25], ['midrise', 23], ['tower', 12]]);
   if (kind === 'house') return { kind, w: rng.range(18, 26), d: rng.range(34, 40) };
   if (kind === 'row') return { kind, w: rng.range(28, 46), d: rng.range(28, 34) };
-  return { kind, w: rng.range(20, 36), d: rng.range(26, 34) };
+  if (kind === 'midrise') return { kind, w: rng.range(20, 36), d: rng.range(26, 34) };
+  return { kind, w: rng.range(40, 60), d: rng.range(45, 60) };
 }
 
 function generateLot(plan: LotPlan, seed: number, details: DetailOptions): HouseModel {
   const pick = <T extends string>(v: 'mixed' | T) => (v === 'mixed' ? undefined : v);
   if (plan.kind === 'house') return generateHouse({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.houseStyle), details });
   if (plan.kind === 'row') return generateRowhouses({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.rowStyle), details });
-  return generateMidrise({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.midriseStyle), details });
+  if (plan.kind === 'midrise') return generateMidrise({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.midriseStyle), details });
+  return generateTower({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.towerStyle), design: pick(params.towerDesign), details });
 }
 
 function regenerate(): void {
@@ -282,6 +302,11 @@ function regenerate(): void {
   chunks.lodDistance = params.lodDistance;
   chunks.build(lots, { apronDepth: LOT_EDGE - STREET.asphalt, streetTreeZ: -(STREET.sidewalk + STREET.verge / 2) });
   chunks.update(camera.position);
+  skyline = Math.max(...lots.map((l) => l.bounds!.max.y));
+  // Tall skylines need the haze pushed back or distant towers wash out.
+  const fog = scene.fog as THREE.Fog;
+  fog.near = 260 + skyline * 1.5;
+  fog.far = 650 + skyline * 3;
 
   // Labels above each lot.
   for (const lot of lots) {
@@ -378,6 +403,65 @@ renderer.domElement.addEventListener('pointerup', (ev) => {
 
 // Smooth camera fly-to
 let fly: { fromPos: THREE.Vector3; toPos: THREE.Vector3; fromT: THREE.Vector3; toT: THREE.Vector3; t: number } | null = null;
+
+// ---------------------------------------------------------------- keyboard movement
+// WASD / arrows move across the ground in the direction you face, Q/E (or PgDn/PgUp) go down/up,
+// Shift = 3x faster. Speed scales with how far out you are zoomed.
+const keys = new Set<string>();
+window.addEventListener('keydown', (e) => {
+  if ((e.target as HTMLElement | null)?.closest?.('input, select, textarea')) return;
+  if (MOVE_KEYS.has(e.code)) {
+    keys.add(e.code);
+    e.preventDefault();
+  }
+});
+window.addEventListener('keyup', (e) => keys.delete(e.code));
+window.addEventListener('blur', () => keys.clear());
+const MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyQ', 'KeyE', 'PageUp', 'PageDown', 'ShiftLeft', 'ShiftRight']);
+const _fwd = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _move = new THREE.Vector3();
+const UP = new THREE.Vector3(0, 1, 0);
+function applyKeys(dt: number): boolean {
+  if (!keys.size) return false;
+  const k = (...codes: string[]) => codes.some((c) => keys.has(c));
+  camera.getWorldDirection(_fwd);
+  _fwd.y = 0;
+  if (_fwd.lengthSq() < 1e-6) _fwd.set(0, 0, -1);
+  _fwd.normalize();
+  _right.crossVectors(_fwd, UP).normalize();
+  _move.set(0, 0, 0);
+  if (k('KeyW', 'ArrowUp')) _move.add(_fwd);
+  if (k('KeyS', 'ArrowDown')) _move.sub(_fwd);
+  if (k('KeyD', 'ArrowRight')) _move.add(_right);
+  if (k('KeyA', 'ArrowLeft')) _move.sub(_right);
+  const vert = (k('KeyE', 'PageUp') ? 1 : 0) - (k('KeyQ', 'PageDown') ? 1 : 0);
+  if (_move.lengthSq() === 0 && vert === 0) return false;
+  const dist = camera.position.distanceTo(controls.target);
+  const speed = THREE.MathUtils.clamp(dist * 0.9, 5, 300) * (k('ShiftLeft', 'ShiftRight') ? 3 : 1) * dt;
+  if (_move.lengthSq() > 0) _move.normalize().multiplyScalar(speed);
+  _move.y = vert * speed * 0.6;
+  camera.position.add(_move);
+  controls.target.add(_move);
+  // Stay above the ground.
+  if (camera.position.y < 1.2) {
+    const d = 1.2 - camera.position.y;
+    camera.position.y += d;
+    controls.target.y += d;
+  }
+  fly = null;
+  return true;
+}
+
+/** Drop to eye level on the nearest sidewalk, looking down the street. */
+function streetView(): void {
+  const side = camera.position.z >= 0 ? 1 : -1;
+  const z = side * (LOT_EDGE - STREET.sidewalk / 2);
+  const x = THREE.MathUtils.clamp(controls.target.x, -streetLength / 2 + 5, streetLength / 2 - 5);
+  const toPos = new THREE.Vector3(x - 12, 1.7, z);
+  const toT = new THREE.Vector3(x + 8, 3.5, z * 0.4);
+  fly = { fromPos: camera.position.clone(), toPos, fromT: controls.target.clone(), toT, t: 0 };
+}
 function focusOn(h: LotInstance | null): void {
   let toT: THREE.Vector3;
   let toPos: THREE.Vector3;
@@ -431,6 +515,7 @@ renderer.setAnimationLoop(() => {
     if (fly.t >= 1) fly = null;
     moving = true;
   }
+  if (applyKeys(dt)) moving = true;
   if (controls.update()) moving = true; // true while the camera is still gliding (damping)
   if (moving && chunks.update(camera.position)) requestRender(true);
   updateHover();

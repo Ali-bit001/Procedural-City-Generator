@@ -19,6 +19,7 @@ import {
   type HouseModel,
   type Mass,
   type Opening,
+  type PolyMass,
   type Porch,
   type PropKind,
   type Tree,
@@ -36,7 +37,9 @@ export interface LotMeshOptions {
 }
 
 /** Props that still matter for the silhouette at a distance. */
-const FAR_PROPS: ReadonlySet<PropKind> = new Set<PropKind>(['waterTank', 'waterTower', 'solarPanels']);
+const FAR_PROPS: ReadonlySet<PropKind> = new Set<PropKind>([
+  'waterTank', 'waterTower', 'solarPanels', 'helipad', 'spire', 'cellTower', 'antennaCluster', 'bigDish', 'coolingTower', 'bmu', 'roofSign',
+]);
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
@@ -55,6 +58,7 @@ export function buildLotGeometry(model: HouseModel, opts: LotMeshOptions = {}): 
   for (const p of model.paths) b.box('solid', p.x0, 0.02, p.z0, p.x1, 0.055, p.z1, paving);
 
   for (const m of model.masses) massMesh(b, m, model, lod);
+  (model.polyMasses ?? []).forEach((pm, i) => polyMassMesh(b, pm, model.seed + i * 7919));
   for (const o of model.openings) openingMesh(b, o, lod);
   for (const bal of model.balconies) balconyMesh(b, bal, lod);
   for (const p of model.porches) porchMesh(b, p, lod);
@@ -210,6 +214,82 @@ function roofMesh(b: MeshBuilder, m: Mass, trimHex: string, lod: Lod): void {
         b.box('solid', r.x0 - oh, top, r.z0 - oh, r.x1 + oh, top + 0.3, r.z1 + oh, roofC, oh < 0.01 ? FACE.NY : 0);
       }
       break;
+    }
+  }
+}
+
+// ---------------------------------------------------------------- towers (extruded polygons)
+
+const h01 = (a: number, b: number) => {
+  const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+};
+
+/**
+ * One solid wall quad per edge (casts the shadow) + one facade-shader quad per edge per floor + roof cap.
+ * Offices light up floor by floor at night, so "lit" is decided per floor, not per window.
+ */
+function polyMassMesh(b: MeshBuilder, pm: PolyMass, seed: number): void {
+  const P = pm.poly;
+  const n = P.length;
+  const top = pm.baseY + pm.floors * pm.floorHeight;
+  const cx = P.reduce((s, p) => s + p[0], 0) / n;
+  const cz = P.reduce((s, p) => s + p[1], 0) / n;
+  const frame = col(pm.frameColor);
+  const roofC = col(pm.roofColor);
+  const parapetH = pm.parapet ? 1.1 : 0;
+  const facadeStyle = STYLE_ID[pm.facade];
+  const floorLit = Array.from({ length: pm.floors }, (_, f) => h01(seed, f) < pm.litChance);
+
+  for (let i = 0; i < n; i++) {
+    const [ax, az] = P[i];
+    const [bx, bz] = P[(i + 1) % n];
+    const len = Math.hypot(bx - ax, bz - az);
+    if (len < 0.05) continue;
+    // Outward normal: perpendicular to the edge, pointing away from the centroid.
+    let nx = (bz - az) / len;
+    let nz = -(bx - ax) / len;
+    if (nx * ((ax + bx) / 2 - cx) + nz * ((az + bz) / 2 - cz) < 0) {
+      nx = -nx;
+      nz = -nz;
+    }
+    const N = V(nx, 0, nz);
+    b.quad('solid', V(ax, pm.baseY, az), V(bx, pm.baseY, bz), V(bx, top + parapetH, bz), V(ax, top + parapetH, az), frame, N);
+    const d = 0.04;
+    const oax = ax + nx * d, oaz = az + nz * d, obx = bx + nx * d, obz = bz + nz * d;
+    for (let f = 0; f < pm.floors; f++) {
+      const y0 = pm.baseY + f * pm.floorHeight;
+      const y1 = y0 + pm.floorHeight;
+      const lobby = pm.lobby && f === 0;
+      const lit = lobby || floorLit[f] ? 1 : 0;
+      b.winQuad('window', V(oax, y0, oaz), V(obx, y0, obz), V(obx, y1, obz), V(oax, y1, oaz), frame, len, pm.floorHeight,
+        lobby ? STYLE_ID.shop : facadeStyle, lit + h01(i + seed, f) * 0.999, N);
+    }
+    if (pm.crownLight) {
+      const e = 0.08;
+      b.quad('lamp', V(ax + nx * e, top + 0.25, az + nz * e), V(bx + nx * e, top + 0.25, bz + nz * e), V(bx + nx * e, top + 0.55, bz + nz * e), V(ax + nx * e, top + 0.55, az + nz * e), col('#fff1cf'), N);
+    }
+  }
+  // Roof cap (fan from the centroid; footprints are convex).
+  const capY = top + 0.02;
+  for (let i = 0; i < n; i++) {
+    const [ax, az] = P[i];
+    const [bx, bz] = P[(i + 1) % n];
+    b.tri('solid', V(cx, capY, cz), V(ax, capY, az), V(bx, capY, bz), roofC, V(0, 1, 0));
+  }
+  if (pm.parapet) {
+    // Inner face + top of the parapet: the footprint shrunk 0.3 m towards the centroid.
+    const inner = P.map(([x, z]) => {
+      const dx = x - cx, dz = z - cz;
+      const r = Math.hypot(dx, dz) || 1;
+      const k = Math.max(0.5, 1 - 0.3 / r);
+      return [cx + dx * k, cz + dz * k] as [number, number];
+    });
+    for (let i = 0; i < n; i++) {
+      const [ax, az] = P[i], [bx, bz] = P[(i + 1) % n];
+      const [ix, iz] = inner[i], [jx, jz] = inner[(i + 1) % n];
+      b.quad('solid', V(ix, capY, iz), V(jx, capY, jz), V(jx, top + parapetH, jz), V(ix, top + parapetH, iz), frame, V(cx - (ix + jx) / 2, 0, cz - (iz + jz) / 2));
+      b.quad('solid', V(ax, top + parapetH, az), V(bx, top + parapetH, bz), V(jx, top + parapetH, jz), V(ix, top + parapetH, iz), frame, V(0, 1, 0));
     }
   }
 }

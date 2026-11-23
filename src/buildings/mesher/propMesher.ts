@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { LocalFrame, MeshBuilder, SHAPES, TEMPLATES, col } from './MeshBuilder';
 import type { Light, Prop } from '../spec';
+import { STYLE_ID } from '../../render/windowMaterial';
 
 const STEEL = col('#8a8f96');
 const DARK = col('#2a2a2a');
@@ -195,6 +196,126 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       L.shape('solid', SHAPES.cone, 0, legH + 0.1 + bh + r * 0.35, 0, r + 0.12, r * 0.7, r + 0.12, c2);
       break;
     }
+    case 'helipad': {
+      const r = p.w ?? 6;
+      L.shape('solid', SHAPES.cyl, 0, 0.1, 0, r, 0.2, r, c1);
+      const paint = col('#f2f2ee');
+      // circle marking (flat boxes around the rim) + the "H"
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2;
+        const x = Math.cos(a) * r * 0.82;
+        const z = Math.sin(a) * r * 0.82;
+        L.beam('solid', [x, 0.21, z], [Math.cos(a + 0.3) * r * 0.82, 0.21, Math.sin(a + 0.3) * r * 0.82], 0.02, paint);
+      }
+      L.box('solid', -1.3, 0.2, -1.6, -0.9, 0.22, 1.6, c2);
+      L.box('solid', 0.9, 0.2, -1.6, 1.3, 0.22, 1.6, c2);
+      L.box('solid', -0.9, 0.2, -0.2, 0.9, 0.22, 0.2, c2);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        L.box('lamp', Math.cos(a) * r * 0.97 - 0.08, 0.2, Math.sin(a) * r * 0.97 - 0.08, Math.cos(a) * r * 0.97 + 0.08, 0.3, Math.sin(a) * r * 0.97 + 0.08, col('#a8ff9a'));
+      }
+      break;
+    }
+    case 'spire': {
+      // Tapered spire / antenna mast with a red aviation light on top.
+      const r = p.w ?? 1.2;
+      const h = p.h ?? 20;
+      L.box('solid', -r * 1.4, 0, -r * 1.4, r * 1.4, 1.2, r * 1.4, c2);
+      L.shape('solid', SHAPES.cone, 0, 1.2 + h * 0.35, 0, r, h * 0.7, r, c1);
+      L.beam('solid', [0, 1.2 + h * 0.6, 0], [0, 1.2 + h, 0], 0.18, c1);
+      L.box('lamp', -0.2, 1.2 + h, -0.2, 0.2, 1.6 + h, 0.2, col('#c80d08'));
+      break;
+    }
+    case 'cellTower': {
+      // Lattice telecom mast: 3 tapering legs with zig-zag bracing, sector antennas, microwave dishes.
+      const h = p.h ?? 14;
+      const r0 = 1.0;
+      const r1 = 0.35;
+      const leg = (k: number, y: number): [number, number, number] => {
+        const r = r0 + (r1 - r0) * (y / h);
+        const a = (k / 3) * Math.PI * 2;
+        return [Math.cos(a) * r, y, Math.sin(a) * r];
+      };
+      for (let k = 0; k < 3; k++) L.beam('solid', leg(k, 0), leg(k, h), 0.09, c1);
+      for (let y = 0; y < h - 1; y += 2) {
+        for (let k = 0; k < 3; k++) L.beam('solid', leg(k, y), leg((k + 1) % 3, y + 2), 0.04, c1);
+      }
+      for (let k = 0; k < 3; k++) {
+        const a = (k / 3) * Math.PI * 2 + Math.PI / 3;
+        const x = Math.cos(a) * (r1 + 0.25);
+        const z = Math.sin(a) * (r1 + 0.25);
+        L.shape('solid', SHAPES.box, x, h - 1.4, z, 0.32, 1.5, 0.12, col('#e8e8e4'), new THREE.Vector3(0, 1, 0)); // sector antenna panel
+        L.beam('solid', [x * 0.4, h - 1.4, z * 0.4], [x, h - 1.4, z], 0.05, c1);
+      }
+      for (const a of [0.4, 2.6]) {
+        const r = r0 + (r1 - r0) * ((h - 4) / h) + 0.25;
+        L.shape('solid', SHAPES.cylLow, Math.cos(a) * r, h - 4, Math.sin(a) * r, 0.45, 0.2, 0.45, col('#e8e8e4'), new THREE.Vector3(Math.cos(a), 0, Math.sin(a)));
+      }
+      L.box('lamp', -0.12, h, -0.12, 0.12, h + 0.25, 0.12, col('#c80d08'));
+      break;
+    }
+    case 'antennaCluster': {
+      // A handful of thin masts of different heights, with cross-bars; red light on the tallest.
+      const h = p.h ?? 8;
+      const masts: [number, number, number][] = [[0, 0, 1], [1.1, 0.4, 0.65], [-0.9, 0.7, 0.5], [0.3, -1.0, 0.8]];
+      for (const [x, z, f] of masts) {
+        const mh = h * f;
+        L.beam('solid', [x, 0, z], [x, mh, z], 0.08, c1);
+        for (let y = mh * 0.4; y < mh; y += mh * 0.25) L.beam('solid', [x - 0.35, y, z], [x + 0.35, y, z], 0.03, c1);
+      }
+      L.box('lamp', -0.1, h, -0.1, 0.1, h + 0.2, 0.1, col('#c80d08'));
+      break;
+    }
+    case 'bigDish': {
+      // Satellite ground-station style dish on a pedestal, aimed up and out (-z).
+      const r = p.w ?? 1.5;
+      L.box('solid', -0.4, 0, -0.4, 0.4, 0.9, 0.4, c2);
+      L.beam('solid', [0, 0.9, 0], [0, 1.4, -0.2], 0.2, c2);
+      L.shape('solid', SHAPES.cyl, 0, 1.6, -0.35, r, 0.16, r, c1, new THREE.Vector3(0, 0.8, -1));
+      L.beam('solid', [0, 1.6, -0.35], [0, 1.6 + 0.8 * 0.9, -0.35 - 0.9], 0.05, c2);
+      break;
+    }
+    case 'coolingTower': {
+      L.shape('solid', SHAPES.cyl, 0, 1.1, 0, 1.3, 2.2, 1.3, c1);
+      L.shape('solid', SHAPES.tube, 0, 2.3, 0, 1.35, 0.25, 1.35, c2);
+      L.shape('solid', SHAPES.cylLow, 0, 2.25, 0, 1.0, 0.05, 1.0, DARK); // fan
+      for (let k = 0; k < 4; k++) L.box('solid', -1.31 + 0, 0.3 + k * 0.45, -0.5, -1.3, 0.5 + k * 0.45, 0.5, c2); // louvres
+      break;
+    }
+    case 'bmu': {
+      // Building maintenance unit (window-cleaning crane): cart, mast, arm reaching out over the edge (-z), cradle.
+      const reach = p.w ?? 5;
+      L.box('solid', -0.9, 0, -0.8, 0.9, 0.9, 1.6, c1);
+      L.box('solid', -0.6, 0.9, 0.6, 0.6, 1.6, 1.5, c2); // counterweight
+      L.beam('solid', [0, 0.9, 0], [0, 3.2, 0], 0.3, c1);
+      L.beam('solid', [0, 3.2, 1.0], [0, 3.2, -reach], 0.22, c1);
+      L.beam('solid', [0, 3.2, -reach + 0.1], [0, 0.6, -reach + 0.1], 0.025, STEEL);
+      L.box('solid', -1.0, 0.1, -reach - 0.3, 1.0, 0.6, -reach + 0.4, c2); // cradle
+      break;
+    }
+    case 'flagpole': {
+      const h = p.h ?? 8;
+      L.shape('solid', SHAPES.cylLow, 0, 0.1, 0, 0.25, 0.2, 0.25, STEEL);
+      L.beam('solid', [0, 0, 0], [0, h, 0], 0.07, col('#dcdcd8'));
+      L.shape('solid', SHAPES.sphere, 0, h + 0.08, 0, 0.1, 0.1, 0.1, col('#c9a648'));
+      // flag with a slight wave (two panels)
+      L.poly('solid', [[0.04, h - 0.1, 0], [0.9, h - 0.15, 0.12], [0.9, h - 1.0, 0.12], [0.04, h - 0.95, 0]], c1);
+      L.poly('solid', [[0.9, h - 0.15, 0.12], [1.7, h - 0.12, 0], [1.7, h - 0.98, 0], [0.9, h - 1.0, 0.12]], c2);
+      break;
+    }
+    case 'roofSign': {
+      // Big rooftop sign on a steel frame, lettering + glow from the sign shader. Faces -z.
+      const w = p.w ?? 10;
+      const h = p.h ?? 2.5;
+      const base = 1.2;
+      for (const x of [-w / 2 + 0.4, 0, w / 2 - 0.4]) {
+        L.beam('solid', [x, 0, 0], [x, base + h, 0], 0.12, STEEL);
+        L.beam('solid', [x, 0, 1.2], [x, base + h * 0.8, 0.05], 0.08, STEEL);
+      }
+      L.box('solid', -w / 2, base, 0.02, w / 2, base + h, 0.2, DARK);
+      L.winQuad('window', [[-w / 2 + 0.05, base + 0.05, -0.01], [w / 2 - 0.05, base + 0.05, -0.01], [w / 2 - 0.05, base + h - 0.05, -0.01], [-w / 2 + 0.05, base + h - 0.05, -0.01]], c1, w - 0.1, h - 0.1, STYLE_ID.sign, 1 + ((p.x * 7.31 + p.z * 3.17) % 1 + 1) % 1 * 0.99, [0, 0, -1]);
+      break;
+    }
     case 'solarPanels': {
       const w = p.w ?? 4;
       const d = p.d ?? 2;
@@ -286,7 +407,7 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
   }
 }
 
-const LAMP = col('#fff1cf');
+const LAMP = col('#ffe2a8');
 
 /** Far-LOD light: only the glowing part, so the city still sparkles at night. */
 export function drawLightFar(b: MeshBuilder, l: Light): void {
@@ -306,6 +427,10 @@ export function drawLightFar(b: MeshBuilder, l: Light): void {
       break;
     case 'streetLamp':
       L.box('lamp', -0.16, 6.24, -1.8, 0.16, 6.3, -1.25, LAMP);
+      break;
+    case 'aviation':
+      // Oversized on purpose: obstruction lights must read from far away.
+      L.box('lamp', -0.45, 0.5, -0.45, 0.45, 1.4, 0.45, col('#c80d08'));
       break;
   }
 }
@@ -333,6 +458,11 @@ export function drawLight(b: MeshBuilder, l: Light): void {
       L.beam('solid', [0, 0, 0], [0, 2.0, 0], 0.08, DARK);
       L.box('lamp', -0.14, 2.0, -0.14, 0.14, 2.35, 0.14, LAMP);
       L.shape('solid', SHAPES.cone, 0, 2.43, 0, 0.22, 0.18, 0.22, DARK);
+      break;
+    case 'aviation':
+      // Red obstruction light on a short post (tall buildings, masts).
+      L.beam('solid', [0, 0, 0], [0, 0.6, 0], 0.06, DARK);
+      L.box('lamp', -0.12, 0.6, -0.12, 0.12, 0.85, 0.12, col('#c80d08'));
       break;
     case 'streetLamp':
       L.shape('solid', SHAPES.cylLow, 0, 0.3, 0, 0.16, 0.6, 0.16, col('#5a5f66'));

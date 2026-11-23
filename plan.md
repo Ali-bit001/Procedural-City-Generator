@@ -72,7 +72,7 @@ src/
 | Type | Massing | Facade | Roof/details | Key parameters |
 |---|---|---|---|---|
 | **Supertall/landmark** | Podium, tower, several setbacks, taper/twist | Curtain-wall glass | Spire, lit crown | height 250–500 m, taper, twist, number of setbacks |
-| **Office tower** | Podium plus box, rounded or chamfered tower | Curtain wall or grid | Flat roof, mechanical housing, antenna | floors 20–60, corner style |
+| **Office tower** ✅ | Podium plus box, rounded or chamfered tower | Curtain wall or grid | Flat roof, mechanical housing, antenna | floors 20–60, corner style |
 | **Mid-rise mixed-use** ✅ | Built to the lot edge, occasional upper setback | Shopfront ground floor, punched windows above | Parapet, AC units, water tank | floors 4–12, brick or modern |
 | **Apartment block** | Slab, point tower or courtyard | Punched windows, balconies | Flat roof, roof garden | floors 5–25, balcony style |
 | **Row house/townhouse** ✅ | Narrow joined boxes | Bay windows, stoops | Gable or flat roof, chimneys | width, colours, roof height variation |
@@ -88,11 +88,11 @@ src/
 
 | Phase | Content | Status |
 |---|---|---|
-| **B0** | Building Lab setup: Vite + Three.js, OrbitControls, GUI (seed, count, style, sun), hover info, click to focus, seed in URL | ✅ Done |
-| **B1** | Massing core: polygon extrusion, insets, setbacks, taper, twist, podium + tower, courtyard | ⬜ |
+| **B0** | Building Lab setup: Vite + Three.js, OrbitControls, GUI (seed, count, style, sun), hover info, click to focus, seed in URL, WASD / Q-E movement, ground panning, zoom to cursor, street view | ✅ Done |
+| **B1** | Massing core: polygon extrusion, insets, setbacks, taper, twist, podium + tower, courtyard | 🟨 Convex polygon towers: setbacks, taper, twist |
 | **B2** | Floors and facade grammar, window shader (UV cells, frames, glass), special ground floor | ✅ Done (window shader) |
 | **B3** | Roofs: flat + parapet, gable, hip, sawtooth, tower crowns, rooftop clutter | ⬜ (gable/hip/shed/flat done for houses) |
-| **B4** | Modern core types: office tower, supertall, mid-rise mixed-use, apartment block (the skyline) | 🟨 Mid-rise done |
+| **B4** | Modern core types: office tower, supertall, mid-rise mixed-use, apartment block (the skyline) | 🟨 Mid-rise + office tower done |
 | **B5** | Low-rise types: **row house ✅**, **suburban house ✅**, shop, warehouse, factory | 🟨 In progress |
 | **B6** | Style system: palettes, realistic/stylized switch, material variation, night mode with lit windows | ⬜ |
 | **B7** | Details and LOD: balconies, awnings, signs, fire escapes, LOD0/1/2, merging, instancing | 🟨 Chunks + 2 LODs done |
@@ -192,5 +192,31 @@ A 60-lot street (~1 km): 122 draw calls, ~105k triangles drawn, generated and me
 
 **Budget left for the pseudo-simulation:** pedestrians and cars should be `InstancedMesh` (one draw call per model type), moved on the CPU along sidewalk / lane paths, with only nearby instances animated.
 
+## Done: Office tower
+
+File: `src/buildings/types/tower.ts` (generator), `polyMassMesh` in `src/buildings/mesher/lotMesher.ts` (geometry).
+
+```
+Lot     -> Plaza (trees, benches, fountain, bollards) + [Podium] + Tower + service yard
+Tower   -> Footprint (rect | chamfered | rounded | round) x Modifier (none | setbacks | taper | twist)
+Segment -> extruded convex polygon; facade = one shader quad per edge per floor
+Crown   -> plant room + AC units | helipad | spire   [+ lit crown band]
+```
+
+- **Towers are `PolyMass`es:** convex extruded polygons, so they can be rotated (twist), scaled (taper) and stepped (setbacks). This is the massing core the supertall and apartment towers will reuse.
+- **Facades:** glass curtain wall (the frame colour tints the glass) or stone grid with punched windows (new `grid` shader style).
+- **Night:** offices light up floor by floor, with cool fluorescent light that varies pane by pane.
+- **Designs** (`design` in the Lab, `?design=` in the URL):
+  - **classic:** straight, setbacks, taper or a gentle twist
+  - **spiral:** 120–220° twist, slimming as it rises
+  - **flame:** swells above the base and narrows to a point, gentle twist, spire
+  - **stacked:** blocks of 4–8 floors shifted and turned like a pile of boxes
+  - **rotating:** every floor plate turned to its own angle around a round core, with a gap under each plate (inspired by the Dynamic Tower concept)
+  - **yTower:** three wings around a hexagonal core, stepping back in a spiral, core rising into a tall spire
+- **Footprints:** rect, chamfer, rounded, round, oval, triangle, hexagon, octagon, diamond. Y-towers are composites of convex wings.
+- **How designs work:** each is a function "floor index -> convex polygons". Runs of identical floors merge into one volume, and the finished tower is shrunk about its axis if any floor would leave the lot.
+- **Rooftop equipment** (placed inside the roof outline, clear of the plant room / helipad / spire and of each other): AC condensers or cooling towers, lattice telecom masts with sector antennas and microwave dishes, antenna clusters, large satellite dishes, window-cleaning cranes (BMU) reaching over the edge, flagpoles, lit rooftop signs, and red aviation obstruction lights on the corners of every tower over 60 m. South Asian mid-rises sometimes carry a telecom mast, and main-street blocks an antenna cluster.
+- **Cost** (near / far): classic ~2,600 / ~1,100, stacked ~2,400 / ~900, Y-tower ~3,600 / ~1,700, spiral ~3,800 / ~2,200, flame ~4,400 / ~2,400, rotating ~5,800 / ~3,400. Heights range 57–301 m.
+
 ## Next
-Waiting on feedback for the mid-rise, then the next building type.
+Waiting on feedback for the office tower, then the next building type.

@@ -127,6 +127,11 @@ export class ChunkManager {
 /** World bounds of a lot: its footprint up to the top of its tallest roof (+ a bit for props). */
 function lotBounds(lot: LotInstance): THREE.Box3 {
   const m = lot.model;
-  const h = Math.max(3, ...m.masses.map((ms) => massTop(ms) + roofRise(ms))) + 2;
+  const h = Math.max(
+    3,
+    m.height ?? 0,
+    ...m.masses.map((ms) => massTop(ms) + roofRise(ms)),
+    ...(m.polyMasses ?? []).map((pm) => pm.baseY + pm.floors * pm.floorHeight),
+  ) + 2;
   return new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(m.lot.width, h, m.lot.depth)).applyMatrix4(lot.matrix);
 }
