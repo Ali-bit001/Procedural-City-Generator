@@ -16,6 +16,8 @@ import {
   stairRun,
   type Balcony,
   type Fence,
+  type FireEscape,
+  type Pipe,
   type HouseModel,
   type Mass,
   type Opening,
@@ -61,6 +63,8 @@ export function buildLotGeometry(model: HouseModel, opts: LotMeshOptions = {}): 
   (model.polyMasses ?? []).forEach((pm, i) => polyMassMesh(b, pm, model.seed + i * 7919));
   for (const o of model.openings) openingMesh(b, o, lod);
   for (const bal of model.balconies) balconyMesh(b, bal, lod);
+  for (const p of model.pipes ?? []) pipeMesh(b, p, lod);
+  for (const fe of model.fireEscapes ?? []) fireEscapeMesh(b, fe, lod);
   for (const p of model.porches) porchMesh(b, p, lod);
   for (const c of model.chimneys) {
     b.box('solid', c.x - c.w / 2, c.y0, c.z - c.d / 2, c.x + c.w / 2, c.y1, c.z + c.d / 2, col(c.color));
@@ -367,7 +371,7 @@ function openingMesh(b: MeshBuilder, o: Opening, lod: Lod): void {
   }
 
   if (o.kind === 'window') {
-    if (style !== 'curtain' && style !== 'ribbon') wallBox(b, 'solid', o, -hw - 0.1, hw + 0.1, y0 - 0.07, y0, 0, 0.12, frame); // sill
+    if (style !== 'curtain' && style !== 'ribbon' && !o.noSill) wallBox(b, 'solid', o, -hw - 0.1, hw + 0.1, y0 - 0.07, y0, 0, 0.12, frame); // sill
     if (o.shutterColor) {
       const sw = Math.min(0.5, o.width * 0.45);
       const sc = col(o.shutterColor);
@@ -435,6 +439,64 @@ function balconyMesh(b: MeshBuilder, bal: Balcony, lod: Lod): void {
   if (lod === 0) {
     // handrail
     wallBox(b, 'solid', bal, -hw, hw, bal.y + h, bal.y + h + 0.05, d - 0.05, d + 0.02, rc);
+  }
+}
+
+// ---------------------------------------------------------------- pipes & fire escapes
+
+/** Vertical pipe off the wall, with wall brackets, a shoe at the bottom and branches into the wall. */
+function pipeMesh(b: MeshBuilder, p: Pipe, lod: Lod): void {
+  if (lod === 1) return; // a 12 cm pipe is invisible at a distance
+  const c = col(p.color);
+  const ref: WallRef = { cx: p.x, cz: p.z, nx: p.nx, nz: p.nz };
+  const r = 0.06;
+  const d0 = 0.06;
+  wallBox(b, 'solid', ref, -r, r, Math.max(p.y0, 0.25), p.y1, d0, d0 + 2 * r, c);
+  // shoe: bends out at the bottom
+  wallBox(b, 'solid', ref, -r, r, p.y0, 0.3, d0, d0 + 0.32, c);
+  for (let y = p.y0 + 2; y < p.y1 - 0.5; y += 3) wallBox(b, 'solid', ref, -r - 0.03, r + 0.03, y, y + 0.06, 0, d0 + 2 * r + 0.02, c);
+  for (const y of p.branches) {
+    // short horizontal run into the wall + a small collar
+    wallBox(b, 'solid', ref, r, r + 0.45, y - 0.04, y + 0.04, 0, d0 + 0.08, c);
+    wallBox(b, 'solid', ref, -r - 0.02, r + 0.02, y - 0.07, y + 0.07, d0 - 0.01, d0 + 2 * r + 0.01, c);
+  }
+  // gooseneck over the parapet / eave
+  wallBox(b, 'solid', ref, -r, r, p.y1 - 0.1, p.y1 + 0.02, -0.35, d0 + 2 * r, c);
+}
+
+/** Steel fire escape: platform per level, alternating flights, rails (cut-out quads), drop ladder. */
+function fireEscapeMesh(b: MeshBuilder, fe: FireEscape, lod: Lod): void {
+  const c = col(fe.color);
+  const hw = fe.width / 2;
+  const dep = fe.depth;
+  const n = V(fe.nx, 0, fe.nz);
+  const tan = V(fe.nz !== 0 ? 1 : 0, 0, fe.nz !== 0 ? 0 : 1);
+  const P = (t: number, y: number, d: number) => wallPt(fe, t, y, d);
+  const rail = (a: THREE.Vector3, bb: THREE.Vector3, h: number, len: number, normal: THREE.Vector3) => {
+    if (lod === 0) b.winQuad('cutout', a, bb, bb.clone().setY(bb.y + h), a.clone().setY(a.y + h), c, len, h, STYLE_ID.iron, 0.5, normal);
+  };
+  fe.levels.forEach((y, i) => {
+    // grated platform
+    wallBox(b, 'solid', fe, -hw, hw, y - 0.07, y, 0, dep, c);
+    rail(P(-hw, y, dep), P(hw, y, dep), 1.0, fe.width, n);
+    rail(P(-hw, y, 0), P(-hw, y, dep), 1.0, dep, tan.clone().negate());
+    rail(P(hw, y, 0), P(hw, y, dep), 1.0, dep, tan);
+    // flight up to the next platform, alternating direction
+    const next = fe.levels[i + 1];
+    if (next !== undefined) {
+      const s = i % 2 === 0 ? 1 : -1;
+      const ta = s * (-hw + 0.35);
+      const tb = s * (hw - 0.35);
+      b.slab('solid', P(ta, y, 0.15), P(tb, next - 0.07, 0.15), P(tb, next - 0.07, dep * 0.7), P(ta, y, dep * 0.7), 0.06, c);
+      rail(P(ta, y, dep * 0.7), P(tb, next - 0.07, dep * 0.7), 0.9, Math.abs(tb - ta), n);
+    }
+  });
+  // drop ladder below the first platform
+  if (lod === 0 && fe.levels.length) {
+    const y0 = fe.levels[0];
+    const tl = hw - 0.6;
+    for (const dt of [-0.22, 0.22]) wallBox(b, 'solid', fe, tl + dt - 0.03, tl + dt + 0.03, y0 - 2.3, y0, dep * 0.45, dep * 0.45 + 0.06, c);
+    for (let y = y0 - 2.2; y < y0; y += 0.3) wallBox(b, 'solid', fe, tl - 0.22, tl + 0.22, y, y + 0.03, dep * 0.45, dep * 0.45 + 0.05, c);
   }
 }
 

@@ -74,7 +74,7 @@ src/
 | **Supertall/landmark** | Podium, tower, several setbacks, taper/twist | Curtain-wall glass | Spire, lit crown | height 250–500 m, taper, twist, number of setbacks |
 | **Office tower** ✅ | Podium plus box, rounded or chamfered tower | Curtain wall or grid | Flat roof, mechanical housing, antenna | floors 20–60, corner style |
 | **Mid-rise mixed-use** ✅ | Built to the lot edge, occasional upper setback | Shopfront ground floor, punched windows above | Parapet, AC units, water tank | floors 4–12, brick or modern |
-| **Apartment block** | Slab, point tower or courtyard | Punched windows, balconies | Flat roof, roof garden | floors 5–25, balcony style |
+| **Apartment block** ✅ | Slab, point tower or courtyard | Punched windows, balconies | Flat roof, roof garden | floors 5–25, balcony style |
 | **Row house/townhouse** ✅ | Narrow joined boxes | Bay windows, stoops | Gable or flat roof, chimneys | width, colours, roof height variation |
 | **Suburban house** ✅ | Main block + wing + garage, or stacked volumes | Windows, door, porch | Gable, hip, shed or flat roof | style, floors, garage, wing, porch, pool |
 | **Shop/strip mall** | Wide, low box | Glass front, signs | Flat roof, big AC units | number of units, sign colours |
@@ -92,7 +92,7 @@ src/
 | **B1** | Massing core: polygon extrusion, insets, setbacks, taper, twist, podium + tower, courtyard | 🟨 Convex polygon towers: setbacks, taper, twist |
 | **B2** | Floors and facade grammar, window shader (UV cells, frames, glass), special ground floor | ✅ Done (window shader) |
 | **B3** | Roofs: flat + parapet, gable, hip, sawtooth, tower crowns, rooftop clutter | ⬜ (gable/hip/shed/flat done for houses) |
-| **B4** | Modern core types: office tower, supertall, mid-rise mixed-use, apartment block (the skyline) | 🟨 Mid-rise + office tower done |
+| **B4** | Modern core types: office tower, supertall, mid-rise mixed-use, apartment block (the skyline) | 🟨 Mid-rise, office tower, apartments done |
 | **B5** | Low-rise types: **row house ✅**, **suburban house ✅**, shop, warehouse, factory | 🟨 In progress |
 | **B6** | Style system: palettes, realistic/stylized switch, material variation, night mode with lit windows | ⬜ |
 | **B7** | Details and LOD: balconies, awnings, signs, fire escapes, LOD0/1/2, merging, instancing | 🟨 Chunks + 2 LODs done |
@@ -218,5 +218,29 @@ Crown   -> plant room + AC units | helipad | spire   [+ lit crown band]
 - **Rooftop equipment** (placed inside the roof outline, clear of the plant room / helipad / spire and of each other): AC condensers or cooling towers, lattice telecom masts with sector antennas and microwave dishes, antenna clusters, large satellite dishes, window-cleaning cranes (BMU) reaching over the edge, flagpoles, lit rooftop signs, and red aviation obstruction lights on the corners of every tower over 60 m. South Asian mid-rises sometimes carry a telecom mast, and main-street blocks an antenna cluster.
 - **Cost** (near / far): classic ~2,600 / ~1,100, stacked ~2,400 / ~900, Y-tower ~3,600 / ~1,700, spiral ~3,800 / ~2,200, flame ~4,400 / ~2,400, rotating ~5,800 / ~3,400. Heights range 57–301 m.
 
+## Done: Apartment blocks
+
+File: `src/buildings/types/apartment.ts`.
+
+```
+Lot       -> Form + site (lawns, paths, parking, playground, trees, lamps)
+Form      -> slab | point tower | L-block | courtyard (perimeter block, optional gateway arch)
+Facade    -> Floors x Bays -> Window | Entrance door (+ canopy) | Balcony door + Balcony
+Balconies -> pattern (stacked columns | checkerboard | ends | all) x kind (loggia | glass | iron | French)
+Life      -> split ACs, satellite dishes, laundry on balconies, rooftop tanks / antennas / solar
+```
+
+- **Panel:** prefab blocks, loggias painted in mixed pastels per column, floor-joint bands, many wall ACs and dishes, rooftop antennas.
+- **Modern:** large windows, staggered glass balconies, rooftop AC units and solar.
+- **South Asian:** painted plaster, sunshades over every window, iron balconies with laundry, split ACs everywhere, lots of rooftop water tanks, occasional telecom mast.
+- **Brick:** French balconies, white windows, iron front railings, pitched roofs on half of them (wings overlap so the ridges meet cleanly).
+- **Courtyard blocks** fill the lot around a private garden with a playground; half get a gateway arch through the front wing.
+- **Services on the walls:**
+  - **Pipes:** drainpipes / plumbing stacks from ground to roof with brackets, a shoe and a gooseneck. South Asian blocks get several stacks with a branch into the wall at every floor; panel and brick get corner downpipes.
+  - **Fire escapes:** steel platforms per floor, zig-zag flights, cut-out railings and a drop ladder, on end walls of brick / panel / South Asian blocks. Some main-street mid-rises get a New York style one across two front bays.
+  - **Lift shafts** (glazed, floor by floor) and **stair towers** (slit windows at the half-landings) attached to the outside, rising one floor above the roof.
+  - Placement never collides: shafts are masses, so windows behind them are never placed and balconies avoid them; pipes and fire escapes are blockers that ACs and dishes stay out of.
+- **Cost:** ~9,500 triangles near / ~4,400 far for a whole block (dozens of flats).
+
 ## Next
-Waiting on feedback for the office tower, then the next building type.
+Waiting on feedback for the apartments, then the next building type.

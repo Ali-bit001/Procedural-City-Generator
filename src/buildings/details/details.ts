@@ -10,6 +10,7 @@ import { inside, type OpeningPlacer, type Wall, wallsOf } from '../facade/openin
 import {
   massTop,
   rotFromNormal,
+  type Blocker,
   type DetailOptions,
   type Light,
   type Mass,
@@ -69,6 +70,13 @@ export interface DetailContext {
   props: Prop[];
   lights: Light[];
   details: DetailOptions;
+  /** Volumes facade details must avoid (pipes, fire escapes...). */
+  blockers?: Blocker[];
+}
+
+/** True if a point (with a margin) falls inside any blocker. */
+export function blocked(ctx: DetailContext, x: number, y: number, z: number, margin: number): boolean {
+  return (ctx.blockers ?? []).some((b) => x > b.x0 - margin && x < b.x1 + margin && y > b.y0 - margin && y < b.y1 + margin && z > b.z0 - margin && z < b.z1 + margin);
 }
 
 // ---------------------------------------------------------------- yard props
@@ -156,6 +164,7 @@ export function addSplitACs(ctx: DetailContext, count: number, sides: Opening['w
         Math.abs(p.nz !== 0 ? p.cx - x : p.cz - z) < p.width / 2 + 0.6 && y < p.y0 + p.height && y + 0.6 > p.y0,
     );
     if (clash || !facade.visible(wl, x, z, 0.9, y + 0.3, m.id, 0.1)) continue;
+    if (blocked(ctx, x + o.nx * 0.2, y + 0.3, z + o.nz * 0.2, 0.55)) continue;
     props.push({ kind: 'splitAC', x, y, z, rot: rotFromNormal(o.nx, o.nz), color: '#eef0f0' });
   }
 }
@@ -250,6 +259,7 @@ export function addSatelliteDish(ctx: DetailContext, m: Mass, chance: number): v
   const z = wl.az + ((wl.bz - wl.az) * t) / wl.length;
   const y = massTop(m) - 0.6;
   if (!facade.visible(wl, x, z, 0.8, y, m.id, 0)) return;
+  if (blocked(ctx, x + wl.nx * 0.2, y, z + wl.nz * 0.2, 0.6)) return;
   if (facade.openings.some((o) => o.nx === wl.nx && o.nz === wl.nz && Math.hypot(o.cx - x, o.cz - z) < o.width / 2 + 0.6 && y < o.y0 + o.height + 0.3 && y > o.y0 - 0.6)) return;
   props.push({ kind: 'satelliteDish', x, y, z, rot: rotFromNormal(wl.nx, wl.nz), color: '#e6e6e2' });
 }

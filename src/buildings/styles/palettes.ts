@@ -159,6 +159,49 @@ export const TOWER_PALETTES: Record<TowerStyle, { frames: string[]; roofs: strin
   },
 };
 
+export type ApartmentStyle = 'panel' | 'modern' | 'southAsian' | 'brick';
+
+export interface ApartmentPalette {
+  walls: string[];
+  /** Balcony / loggia fronts. */
+  accents: string[];
+  frames: string[];
+  roofs: string[];
+  bands: string[];
+}
+
+export const APARTMENT_PALETTES: Record<ApartmentStyle, ApartmentPalette> = {
+  // Prefab panel blocks: grey-beige panels, loggias painted in mixed pastels.
+  panel: {
+    walls: ['#d9d4c7', '#c8c4b8', '#e2ddd0', '#b9b6ad', '#d0cbbf', '#cfd6d8'],
+    accents: ['#e07a5f', '#81b29a', '#f2cc8f', '#3d5a80', '#98c1d9', '#ee6c4d', '#b5838d', '#e9e2d0'],
+    frames: ['#f4f1ea', '#e9e6df'],
+    roofs: ['#6b6e72', '#5a5d61'],
+    bands: ['#a9a49a', '#bdb8ad', '#9a958c'],
+  },
+  modern: {
+    walls: ['#f3f3f1', '#e2e2de', '#3b3e42', '#9da0a3', '#b4895e', '#d6cfc2'],
+    accents: ['#d6d6d2'],
+    frames: ['#26282b', '#3a3d40'],
+    roofs: ['#4d5054', '#3b3e42'],
+    bands: ['#26282b', '#d6d6d2'],
+  },
+  southAsian: {
+    walls: ['#efe8da', '#e8dcc0', '#f2efe6', '#d9cfba', '#cfd8d4', '#e6d3b3', '#d8e2e8', '#f0e0d0', '#e9d6c4'],
+    accents: ['#b8462f', '#2f5b8a', '#3f6f4f', '#8a8a8a', '#c9a227', '#ffffff'],
+    frames: ['#3b3e42', '#6b4a33', '#e9e6df'],
+    roofs: ['#9a958c', '#8f8b84'],
+    bands: ['#b8462f', '#2f5b8a', '#3f6f4f', '#8a8a8a', '#ffffff', '#5a5f66'],
+  },
+  brick: {
+    walls: ['#8b4a3a', '#9c5a45', '#a86a50', '#b98a6a', '#7a3f33', '#c2a27f'],
+    accents: ['#efe6d2'],
+    frames: ['#f4f1ea', '#2b2b2b'],
+    roofs: ['#5c3b2f', '#4a4f59', '#6b6f76'],
+    bands: ['#efe6d2', '#d8cfb8'],
+  },
+};
+
 /** Accent cladding for modern upper volumes (wood, charcoal, white). */
 export const MODERN_ACCENTS_DARK = ['#3b3e42', '#b4895e', '#2f3236', '#8c6a48'];
 export const MODERN_ACCENTS_LIGHT = ['#f3f3f1', '#d9d5cc', '#b4895e'];

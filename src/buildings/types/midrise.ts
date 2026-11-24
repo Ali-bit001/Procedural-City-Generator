@@ -33,6 +33,7 @@ import {
   massTop,
   rotFromNormal,
   type Balcony,
+  type FireEscape,
   type DetailOptions,
   type Fence,
   type HouseModel,
@@ -218,6 +219,24 @@ export function generateMidrise(spec: MidriseSpec): HouseModel {
       }
     }
   }
+  // New York style fire escape across two window bays on the front of some main-street blocks.
+  const fireEscapes: FireEscape[] = [];
+  if (MS && upper.floors >= 2 && rng.chance(0.4)) {
+    const wl = wallOf(upper.rect, 'front');
+    const n = Math.max(1, Math.floor(wl.length / bay));
+    const bw = wl.length / n;
+    if (n >= 3) {
+      // centred on a bay boundary away from the lobby side
+      const k = lobbySide < 0 ? rng.int(Math.ceil(n / 2), n - 1) : rng.int(1, Math.max(1, Math.floor(n / 2)));
+      const width = Math.min(2 * bw - 0.4, 5.5);
+      fireEscapes.push({
+        cx: wl.ax + k * bw, cz: wl.az, nx: 0, nz: -1, width, depth: 1.2,
+        levels: Array.from({ length: upper.floors }, (_, f) => upper.baseY + f * upper.floorHeight),
+        color: rng.pick(['#2b2b2b', '#3a2a22', '#2f4a3a']),
+      });
+    }
+  }
+
   // Concrete sunshades over the windows (classic South Asian chajjas).
   if (SA && rng.chance(0.8)) addWindowShades(facade, [upper.id], 'slab', bandColor);
 
@@ -326,6 +345,7 @@ export function generateMidrise(spec: MidriseSpec): HouseModel {
     fences,
     trees,
     balconies,
+    fireEscapes,
     paved: true,
     props,
     lights,

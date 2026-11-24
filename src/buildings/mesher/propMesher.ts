@@ -303,6 +303,20 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       L.poly('solid', [[0.9, h - 0.15, 0.12], [1.7, h - 0.12, 0], [1.7, h - 0.98, 0], [0.9, h - 1.0, 0.12]], c2);
       break;
     }
+    case 'laundry': {
+      // Clothes draped over a balcony rail: local -z points out of the building, origin on the rail top.
+      const w = p.w ?? 2;
+      const cloths = ['#e74c3c', '#3498db', '#ecf0f1', '#f1c40f', '#9b59b6', '#2ecc71', '#e67e22', '#ff8fab', '#34495e'];
+      const n = Math.max(2, Math.floor(w / 0.55));
+      for (let i = 0; i < n; i++) {
+        if (h01(p.x + i, p.z) < 0.25) continue;
+        const x = -w / 2 + (i + 0.5) * (w / n);
+        const cw = 0.3 + h01(i, p.x) * 0.2;
+        const ch = 0.35 + h01(p.z, i) * 0.45;
+        L.box('solid', x - cw / 2, -ch, -0.06, x + cw / 2, 0.02, -0.03, col(cloths[Math.floor(h01(p.x + i * 3, p.z + i) * cloths.length)]));
+      }
+      break;
+    }
     case 'roofSign': {
       // Big rooftop sign on a steel frame, lettering + glow from the sign shader. Faces -z.
       const w = p.w ?? 10;

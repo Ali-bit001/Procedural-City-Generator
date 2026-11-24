@@ -32,7 +32,7 @@ export interface RoofSpec {
   parapet: boolean;
 }
 
-export type MassKind = 'main' | 'wing' | 'garage' | 'upper' | 'unit' | 'bay' | 'roofRoom';
+export type MassKind = 'main' | 'wing' | 'garage' | 'upper' | 'unit' | 'bay' | 'roofRoom' | 'shaft' | 'stairTower';
 
 export interface Mass {
   id: number;
@@ -97,6 +97,8 @@ export interface Opening {
   lit?: boolean;
   /** Shader style; defaults from kind / mullions. */
   style?: WindowStyle;
+  /** Flush facade: no sill under the window. */
+  noSill?: boolean;
   /** Opens onto a balcony (no ACs or shades next to it). */
   balcony?: boolean;
 }
@@ -168,6 +170,8 @@ export type PropKind =
   | 'bmu'
   | 'flagpole'
   | 'roofSign'
+  /** Washing hung over a balcony railing (wall-mounted frame, at the rail). */
+  | 'laundry'
   | 'bins'
   | 'bench';
 
@@ -238,6 +242,42 @@ export interface PolyMass {
   parapet: boolean;
 }
 
+/** Vertical pipe on a wall (drainpipe / plumbing stack), with branches into the wall at given heights. */
+export interface Pipe {
+  /** Point on the wall plane at the pipe; the pipe stands just off the wall. */
+  x: number;
+  z: number;
+  nx: number;
+  nz: number;
+  y0: number;
+  y1: number;
+  color: string;
+  branches: number[];
+}
+
+/** Steel fire escape on a wall: a platform per level, zig-zag flights, railings and a drop ladder. */
+export interface FireEscape {
+  cx: number;
+  cz: number;
+  nx: number;
+  nz: number;
+  width: number;
+  depth: number;
+  /** Platform heights, bottom to top. */
+  levels: number[];
+  color: string;
+}
+
+/** Axis-aligned volume that facade details (ACs, dishes) must stay out of. */
+export interface Blocker {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+  z0: number;
+  z1: number;
+}
+
 export interface HouseModel {
   seed: number;
   style: string;
@@ -258,6 +298,8 @@ export interface HouseModel {
   balconies: Balcony[];
   /** Whole lot is paved (commercial) instead of lawn. */
   paved?: boolean;
+  pipes?: Pipe[];
+  fireEscapes?: FireEscape[];
   /** Tower volumes (extruded polygons). */
   polyMasses?: PolyMass[];
   /** Overall height incl. spires (for bounds / labels), if taller than the masses. */

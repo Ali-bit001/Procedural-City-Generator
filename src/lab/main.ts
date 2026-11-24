@@ -12,11 +12,12 @@ import { generateHouse } from '../buildings/types/house';
 import { generateRowhouses } from '../buildings/types/rowhouse';
 import { generateMidrise } from '../buildings/types/midrise';
 import { generateTower, type TowerDesign } from '../buildings/types/tower';
+import { generateApartment, type ApartmentForm } from '../buildings/types/apartment';
 import { drawLight } from '../buildings/mesher/propMesher';
 import { MeshBuilder, col } from '../buildings/mesher/MeshBuilder';
 import { createCityMaterials } from '../render/materials';
 import { ChunkManager, type LotInstance } from '../render/chunks';
-import type { HouseStyle, MidriseStyle, RowStyle, TowerStyle } from '../buildings/styles/palettes';
+import type { ApartmentStyle, HouseStyle, MidriseStyle, RowStyle, TowerStyle } from '../buildings/styles/palettes';
 import type { DetailOptions, HouseModel } from '../buildings/spec';
 
 // URL options (handy for sharing a view): ?seed=1337&type=mid-rise&night=1&lots=20&cam=x,y,z,tx,ty,tz
@@ -125,9 +126,9 @@ function applyQuality(q: Quality): void {
 
 // ---------------------------------------------------------------- params / GUI
 
-type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'office towers';
+type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'apartments' | 'office towers';
 const urlSeed = Number(url.get('seed'));
-const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'office towers'];
+const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'apartments', 'office towers'];
 const params = {
   seed: Number.isFinite(urlSeed) && urlSeed > 0 ? urlSeed : 1337,
   type: (TYPES.find((t) => t === url.get('type')) ?? 'mixed street') as BuildingType,
@@ -136,6 +137,8 @@ const params = {
   rowStyle: 'mixed' as 'mixed' | RowStyle,
   midriseStyle: 'mixed' as 'mixed' | MidriseStyle,
   towerStyle: 'mixed' as 'mixed' | TowerStyle,
+  apartmentStyle: (url.get('aptStyle') ?? 'mixed') as 'mixed' | ApartmentStyle,
+  apartmentForm: (url.get('form') ?? 'mixed') as 'mixed' | ApartmentForm,
   towerDesign: (url.get('design') ?? 'mixed') as 'mixed' | TowerDesign,
   waterTanks: 0.4,
   props: 1,
@@ -163,6 +166,8 @@ gui.add(params, 'count', 4, 60, 2).name('lots').onFinishChange(regenerate);
 gui.add(params, 'houseStyle', ['mixed', 'traditional', 'ranch', 'modern']).name('house style').onChange(regenerate);
 gui.add(params, 'rowStyle', ['mixed', 'brownstone', 'terrace', 'modernTown']).name('row style').onChange(regenerate);
 gui.add(params, 'midriseStyle', ['mixed', 'southAsian', 'mainStreet', 'modern']).name('mid-rise style').onChange(regenerate);
+gui.add(params, 'apartmentStyle', ['mixed', 'panel', 'modern', 'southAsian', 'brick']).name('apartment style').onChange(regenerate);
+gui.add(params, 'apartmentForm', ['mixed', 'slab', 'tower', 'lBlock', 'courtyard']).name('apartment form').onChange(regenerate);
 gui.add(params, 'towerStyle', ['mixed', 'glass', 'stone']).name('tower style').onChange(regenerate);
 gui.add(params, 'towerDesign', ['mixed', 'classic', 'spiral', 'flame', 'stacked', 'rotating', 'yTower']).name('tower design').onChange(regenerate);
 const det = gui.addFolder('Details');
@@ -236,7 +241,7 @@ const labels = new THREE.Group();
 scene.add(labels);
 const groundMat = new THREE.MeshStandardMaterial({ color: '#86a862', roughness: 1 });
 
-type LotKind = 'house' | 'row' | 'midrise' | 'tower';
+type LotKind = 'house' | 'row' | 'midrise' | 'apartment' | 'tower';
 interface LotPlan {
   kind: LotKind;
   w: number;
@@ -249,10 +254,12 @@ function planLot(rng: RNG): LotPlan {
       : params.type === 'row houses' ? 'row'
         : params.type === 'mid-rise' ? 'midrise'
           : params.type === 'office towers' ? 'tower'
-            : rng.weighted<LotKind>([['house', 40], ['row', 25], ['midrise', 23], ['tower', 12]]);
+            : params.type === 'apartments' ? 'apartment'
+              : rng.weighted<LotKind>([['house', 34], ['row', 22], ['midrise', 20], ['apartment', 14], ['tower', 10]]);
   if (kind === 'house') return { kind, w: rng.range(18, 26), d: rng.range(34, 40) };
   if (kind === 'row') return { kind, w: rng.range(28, 46), d: rng.range(28, 34) };
   if (kind === 'midrise') return { kind, w: rng.range(20, 36), d: rng.range(26, 34) };
+  if (kind === 'apartment') return { kind, w: rng.range(34, 60), d: rng.range(36, 52) };
   return { kind, w: rng.range(40, 60), d: rng.range(45, 60) };
 }
 
@@ -260,6 +267,7 @@ function generateLot(plan: LotPlan, seed: number, details: DetailOptions): House
   const pick = <T extends string>(v: 'mixed' | T) => (v === 'mixed' ? undefined : v);
   if (plan.kind === 'house') return generateHouse({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.houseStyle), details });
   if (plan.kind === 'row') return generateRowhouses({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.rowStyle), details });
+  if (plan.kind === 'apartment') return generateApartment({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.apartmentStyle), form: pick(params.apartmentForm), details });
   if (plan.kind === 'midrise') return generateMidrise({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.midriseStyle), details });
   return generateTower({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.towerStyle), design: pick(params.towerDesign), details });
 }
