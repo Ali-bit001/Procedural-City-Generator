@@ -22,6 +22,7 @@ import {
   massTop,
   rotFromNormal,
   type Balcony,
+  type AnimSpec,
   type DetailOptions,
   type Fence,
   type HouseModel,
@@ -75,6 +76,7 @@ export function generateRetail(spec: RetailSpec): HouseModel {
   const fences: Fence[] = [];
   const trees: Tree[] = [];
   const balconies: Balcony[] = [];
+  const animated: AnimSpec[] = [];
   const brand = rng.pick(BRAND);
   const roofColor = rng.pick(['#6b6e72', '#5a5d61', '#8f8b84']);
   let lawnColor = jitterHex('#7fae55', rng, 0.06);
@@ -273,6 +275,51 @@ export function generateRetail(spec: RetailSpec): HouseModel {
       props.push({ kind: 'bins', x: left ? sx0 + sw + 1.2 : sx0 - 1.2, y: 0, z: store.rect.z0 + 1, rot: 0, color: '#2b2b2b', color2: brand });
       lights.push({ kind: 'lotLight', x: left ? W - 3 : 3, y: 0, z: D - 4, rot: 0 });
       info.pumps = islands * 2;
+
+      // ---------- extras: car wash, air & water, vacuums, EV chargers, shop-front goods ----------
+      const used: Rect[] = [
+        store.rect,
+        { x0: cx - cw / 2 - 1, x1: cx + cw / 2 + 1, z0: cz - cd / 2 - 1.5, z1: cz + cd / 2 + 1.5 },
+        { x0: sx0, x1: sx0 + sw, z0: store.rect.z0 - 7.5, z1: store.rect.z0 },
+        { x0: (left ? W - 2 : 2) - 1.8, x1: (left ? W - 2 : 2) + 1.8, z0: 0, z1: 2 },
+        ...driveways.map((d) => ({ ...d, z1: 3 })),
+        // the bins beside the shop
+        { x0: (left ? sx0 + sw + 1.2 : sx0 - 1.2) - 0.9, x1: (left ? sx0 + sw + 1.2 : sx0 - 1.2) + 0.9, z0: store.rect.z0 + 0.4, z1: store.rect.z0 + 1.6 },
+      ];
+      // Drive-through car wash in the back corner opposite the shop, entered from the forecourt.
+      const washLen = Math.min(14, D - 2 - (cz + cd / 2 + 2.5));
+      info.carWash = 'no';
+      if (washLen >= 9 && rng.chance(0.75)) {
+        const wx = left ? W - 2 - 3.6 : 2 + 3.6;
+        const wz = D - 2 - washLen / 2;
+        if (!(wx - 3.6 < store.rect.x1 + 0.5 && wx + 3.6 > store.rect.x0 - 0.5)) {
+          props.push({ kind: 'carWashBay', x: wx, y: 0.05, z: wz, rot: 0, color: '#e9e6df', color2: brand, d: washLen });
+          // Two vertical side brushes and an overhead roller, spinning.
+          const bz = wz + rng.range(-1.5, 1.5);
+          for (const sgn of [-1, 1]) animated.push({ kind: 'brush', x: wx + sgn * 1.9, y: 1.45, z: bz, radius: 0.6, height: 2.6, speed: sgn * 6 });
+          animated.push({ kind: 'brush', x: wx, y: 2.95, z: bz + 2.2, radius: 0.5, height: 3.0, speed: 5, horizontal: true, rot: 0 });
+          if (rng.chance(0.6)) car(wx, bz + 0.3, Math.PI);
+          used.push({ x0: wx - 3.8, x1: wx + 3.8, z0: wz - washLen / 2 - 6, z1: wz + washLen / 2 });
+          info.carWash = 'yes';
+        }
+      }
+      const yp = new YardPlacer(rng, W, D, used);
+      const region: Rect = { x0: 1, x1: W - 1, z0: 2.5, z1: D - 1 };
+      const put = (kind: Prop['kind'], w: number, d: number, extra: Partial<Prop>) => {
+        const sp = yp.place(region, w, d, [0], 0.6);
+        if (sp) props.push({ kind, x: sp.x, y: 0.05, z: sp.z, rot: 0, color: '#888888', ...extra });
+      };
+      put('airPump', 0.9, 0.9, { color: '#c0392b' });
+      for (let i = rng.int(1, 2); i > 0; i--) put('vacuum', 2.4, 1.0, { color: brand });
+      if (rng.chance(0.3)) for (let i = rng.int(2, 3); i > 0; i--) put('evCharger', 0.7, 0.7, { color: '#2ecc71' });
+      if (rng.chance(0.25)) put('tyreStack', 2.6, 1.0, { color: '#2b2b2b', w: 3 });
+      // Goods along the shop front: ice chest, gas-cylinder cage, vending machine.
+      let gx = sx0 + 0.3;
+      for (const [kind, w] of [['iceChest', 1.4], ['lpgCage', 1.7], ['vending', 0.9]] as [Prop['kind'], number][]) {
+        if (!rng.chance(0.7) || gx + w > sx0 + sw - 0.3) continue;
+        props.push({ kind, x: gx + w / 2, y: 0.05, z: store.rect.z0 - 0.6, rot: 0, color: kind === 'lpgCage' ? '#d35400' : brand });
+        gx += w + 0.5;
+      }
       break;
     }
 
@@ -434,6 +481,7 @@ export function generateRetail(spec: RetailSpec): HouseModel {
     trees,
     balconies,
     parkingLots,
+    animated,
     paved: form !== 'stripMall',
     props,
     lights,

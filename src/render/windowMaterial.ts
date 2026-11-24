@@ -24,6 +24,8 @@ export const STYLE_ID: Record<WindowStyle | 'picket' | 'iron', number> = {
   sign: 10,
   glassPanel: 11,
   grid: 12,
+  cladding: 13,
+  claddingStrip: 14,
   picket: 20,
   iron: 21,
 };
@@ -128,6 +130,15 @@ WinOut winPattern(vec2 p, vec4 win, vec3 base) {
     office = 1.0;
     glass = step(0.2, lx) * step(lx, bw - 0.2) * step(0.95, p.y) * step(p.y, s.y - 0.45) * step(0.02, abs(lx - bw * 0.5));
     o.rough = 0.8;
+  } else if (st < 14.5) {               // ribbed metal cladding (13), optionally with a glazed strip band (14)
+    float rib = fract(p.x / 0.3);
+    o.color = base * (0.86 + 0.14 * smoothstep(0.0, 0.5, rib) * (1.0 - smoothstep(0.5, 1.0, rib)) * 2.0);
+    o.color *= 0.97 + 0.03 * wHash(floor(p.x / 1.2) + seed * 11.0); // panel-to-panel variation
+    o.rough = 0.55; o.metal = 0.25;
+    if (st < 13.5) return o;
+    float band = step(s.y - 2.6, p.y) * step(p.y, s.y - 1.3) * step(0.6, min(p.x, s.x - p.x));
+    glass = band * (1.0 - wLines(p.x, 2.0, 0.05));
+    office = 1.0;
   } else if (st < 20.5) {               // picket fence (cut-out)
     float picket = step(fract(p.x / 0.26) * 0.26, 0.09) * step(p.y, s.y - 0.06 * step(0.045, abs(fract(p.x / 0.26) * 0.26 - 0.045)));
     float rails = wBox(p, vec2(0.0, 0.33), vec2(s.x, 0.41)) + step(0.95, s.y) * wBox(p, vec2(0.0, s.y - 0.33), vec2(s.x, s.y - 0.25));

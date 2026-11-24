@@ -349,6 +349,9 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
         L.box('glass', -0.36, 1.1, z - 0.25, 0.36, 1.4, z + 0.25, col('#1c2733'));
         for (const s of [-1, 1]) L.beam('solid', [s * 0.36, 1.2, z], [s * 0.6, 0.5, z + 0.1], 0.04, DARK);
       }
+      // squeegee bucket at the island end
+      L.box('solid', -0.22, 0.2, 1.75, 0.22, 0.75, 2.1, col('#1f6fb5'));
+      L.beam('solid', [0.05, 0.6, 1.9], [0.15, 1.2, 1.95], 0.03, DARK);
       break;
     }
     case 'cartCorral': {
@@ -573,6 +576,209 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
         const x1 = x0 + w / n;
         L.beam('solid', [x0, y(x0), 0], [x1, y(x1), 0], 0.012, DARK);
         L.box('lamp', x0 - 0.05, y(x0) - 0.14, -0.05, x0 + 0.05, y(x0) - 0.04, 0.05, col('#ffd28a'));
+      }
+      break;
+    }
+    // ------------------------------------------------------------ industrial
+    case 'smokestack': {
+      // Tapered brick / concrete stack with warning bands, a service platform and a ladder.
+      const h = p.h ?? 30;
+      const r = p.w ?? 1.4;
+      L.shape('solid', SHAPES.cyl, 0, h * 0.25, 0, r, h * 0.5, r, c1);
+      L.shape('solid', SHAPES.cyl, 0, h * 0.75, 0, r * 0.8, h * 0.5, r * 0.8, c1);
+      for (const f of [0.82, 0.92]) L.shape('solid', SHAPES.tube, 0, h * f, 0, r * 0.82, h * 0.04, r * 0.82, c2);
+      L.shape('solid', SHAPES.tube, 0, h - 0.2, 0, r * 0.84, 0.4, r * 0.84, DARK);
+      L.shape('solid', SHAPES.cylLow, 0, h * 0.7, 0, r * 1.3, 0.12, r * 1.3, STEEL); // platform
+      L.beam('solid', [r * 1.02, 0.5, 0], [r * 0.82, h - 0.5, 0], 0.08, STEEL); // ladder
+      break;
+    }
+    case 'storageTank': {
+      const r = p.w ?? 5;
+      const h = p.h ?? 8;
+      L.shape('solid', SHAPES.cyl, 0, h / 2, 0, r, h, r, c1);
+      L.shape('solid', SHAPES.sphere, 0, h, 0, r, r * 0.25, r, c1);
+      L.shape('solid', SHAPES.tube, 0, h - 0.1, 0, r + 0.05, 0.12, r + 0.05, c2);
+      for (let k = 0; k < 6; k++) {
+        // spiral stair as a few steep beams around the shell
+        const a0 = (k / 6) * Math.PI * 1.2;
+        const a1 = ((k + 1) / 6) * Math.PI * 1.2;
+        L.beam('solid', [Math.cos(a0) * (r + 0.3), (k / 6) * h, Math.sin(a0) * (r + 0.3)], [Math.cos(a1) * (r + 0.3), ((k + 1) / 6) * h, Math.sin(a1) * (r + 0.3)], 0.12, STEEL);
+      }
+      break;
+    }
+    case 'silo': {
+      const r = p.w ?? 3;
+      const h = p.h ?? 20;
+      L.shape('solid', SHAPES.cyl, 0, h / 2, 0, r, h, r, c1);
+      for (let y = h * 0.2; y < h; y += h * 0.2) L.shape('solid', SHAPES.tube, 0, y, 0, r + 0.03, 0.15, r + 0.03, c2);
+      L.shape('solid', SHAPES.cone, 0, h + r * 0.3, 0, r, r * 0.6, r, c2);
+      L.box('solid', -0.8, h + r * 0.55, -0.8, 0.8, h + r * 0.55 + 1.4, 0.8, c2);
+      break;
+    }
+    case 'pipeRack': {
+      // Steel bents every ~6 m carrying a bundle of pipes along x; p.w = length, p.h = height.
+      const len = p.w ?? 20;
+      const h = p.h ?? 5;
+      for (let x = -len / 2; x <= len / 2 + 1e-6; x += Math.max(4, len / Math.max(1, Math.round(len / 6)))) {
+        L.beam('solid', [x, 0, -1.2], [x, h, -1.2], 0.25, STEEL);
+        L.beam('solid', [x, 0, 1.2], [x, h, 1.2], 0.25, STEEL);
+        L.beam('solid', [x, h, -1.4], [x, h, 1.4], 0.22, STEEL);
+      }
+      const pipeCols = [c1, c2, col('#9aa0a6'), col('#c9ccd1')];
+      [-0.9, -0.3, 0.3, 0.9].forEach((z, k) => {
+        const pr = 0.18 + (k % 2) * 0.1;
+        L.shape('solid', SHAPES.cylLow, 0, h + 0.11 + pr, z, pr, len, pr, pipeCols[k], X);
+      });
+      break;
+    }
+    case 'conveyor': {
+      // Open inclined belt from (0, 1, 0) to (0, 1 + p.h, -p.w), on legs; crates ride it (animated).
+      const len = p.w ?? 20;
+      const rise = p.h ?? 6;
+      const y0 = 1.0;
+      L.poly('solid', [[-0.6, y0, 0], [0.6, y0, 0], [0.6, y0 + rise, -len], [-0.6, y0 + rise, -len]], DARK, [0, 1, 0]);
+      for (const x of [-0.7, 0.7]) L.beam('solid', [x, y0 + 0.35, 0], [x, y0 + rise + 0.35, -len], 0.1, c1);
+      for (let t = 0; t <= 1.0001; t += 1 / Math.max(1, Math.round(len / 7))) {
+        const y = y0 + rise * t;
+        const z = -len * t;
+        for (const x of [-0.65, 0.65]) L.beam('solid', [x, 0, z], [x, y, z], 0.14, c1);
+        L.beam('solid', [-0.65, y - 0.15, z], [0.65, y - 0.15, z], 0.12, c1);
+      }
+      break;
+    }
+    case 'container': {
+      // ISO shipping container along local z (p.d = 6.1 or 12.2 m long), with door bars at the +z end.
+      const len = p.d ?? 6.1;
+      L.box('solid', -1.22, 0, -len / 2, 1.22, 2.6, len / 2, c1);
+      const dark = c1.clone().multiplyScalar(0.75);
+      for (let z = -len / 2 + 0.6; z < len / 2 - 0.3; z += 1.2) {
+        L.box('solid', -1.24, 0.15, z - 0.05, -1.22, 2.45, z + 0.05, dark);
+        L.box('solid', 1.22, 0.15, z - 0.05, 1.24, 2.45, z + 0.05, dark);
+      }
+      for (const x of [-0.6, 0.6]) L.box('solid', x - 0.04, 0.1, len / 2, x + 0.04, 2.5, len / 2 + 0.03, dark);
+      break;
+    }
+    case 'pallets': {
+      const layers = Math.round(p.h ?? 2);
+      for (let k = 0; k < layers; k++) {
+        const y = k * 1.15;
+        L.box('solid', -0.6, y, -0.5, 0.6, y + 0.14, 0.5, col('#b5895a'));
+        L.box('solid', -0.55, y + 0.14, -0.45, 0.55, y + 1.1, 0.45, c1);
+      }
+      break;
+    }
+    case 'drums': {
+      const n = Math.round(p.w ?? 5);
+      for (let k = 0; k < n; k++) {
+        const x = (k % 3) * 0.65 - 0.65;
+        const z = Math.floor(k / 3) * 0.65 - 0.3;
+        L.shape('solid', SHAPES.cylLow, x, 0.45, z, 0.29, 0.9, 0.29, k % 2 ? c1 : c2);
+      }
+      break;
+    }
+    case 'forklift': {
+      // Forks at -z.
+      L.box('solid', -0.6, 0.2, -0.4, 0.6, 1.2, 1.4, c1);
+      L.box('solid', -0.6, 1.2, 0.4, 0.6, 1.55, 1.4, DARK); // counterweight / seat area
+      for (const x of [-0.55, 0.55]) L.beam('solid', [x, 1.2, 0.0], [x, 2.2, 0.0], 0.06, DARK); // roof posts
+      L.box('solid', -0.62, 2.2, -0.1, 0.62, 2.26, 1.2, DARK);
+      for (const x of [-0.4, 0.4]) L.beam('solid', [x, 0, -0.5], [x, 2.6, -0.5], 0.1, DARK); // mast
+      for (const x of [-0.3, 0.3]) L.box('solid', x - 0.06, 0.08, -1.6, x + 0.06, 0.14, -0.5, STEEL); // forks
+      for (const z of [-0.2, 1.1]) L.shape('solid', SHAPES.cylLow, 0, 0.3, z, 0.3, 1.3, 0.3, DARK, X);
+      break;
+    }
+    case 'craneRails': {
+      // Two elevated runway beams on columns for a travelling gantry crane: span p.w (x), length p.d (z), height p.h.
+      const span = p.w ?? 16;
+      const len = p.d ?? 30;
+      const h = p.h ?? 8;
+      for (const x of [-span / 2, span / 2]) {
+        L.box('solid', x - 0.3, h - 0.6, -len / 2, x + 0.3, h, len / 2, c1);
+        for (let z = -len / 2; z <= len / 2 + 1e-6; z += len / Math.max(1, Math.round(len / 8))) L.box('solid', x - 0.25, 0, z - 0.25, x + 0.25, h - 0.6, z + 0.25, c1);
+      }
+      break;
+    }
+    case 'turbineTower': {
+      // Wind turbine tower + nacelle facing local -z (the rotor is animated separately).
+      const h = p.h ?? 30;
+      L.shape('solid', SHAPES.cyl, 0, h * 0.5, 0, 0.9, h, 0.9, col('#eeeeea'));
+      L.box('solid', -0.7, h - 0.2, -1.0, 0.7, h + 1.2, 2.2, col('#eeeeea'));
+      L.shape('solid', SHAPES.cone, 0, h + 0.5, -1.35, 0.55, 0.7, 0.55, col('#eeeeea'), new THREE.Vector3(0, 0, -1));
+      break;
+    }
+    // ------------------------------------------------------------ petrol-station extras
+    case 'carWashBay': {
+      // Open drive-through bay along local z (p.d long, cars enter at -z): side walls, roof, lit sign band.
+      const len = p.d ?? 14;
+      const hw = 3.25;
+      const h = 4.2;
+      for (const x of [-hw, hw]) {
+        L.box('solid', x - 0.15, 0, -len / 2, x + 0.15, h, len / 2, c1);
+        // strip of frosted windows along each side wall (outside faces)
+        L.box('glass', x - 0.17, 2.0, -len / 2 + 1, x + 0.17, 3.2, len / 2 - 1, col('#9fb4bf'));
+      }
+      L.box('solid', -hw - 0.3, h, -len / 2 - 0.3, hw + 0.3, h + 0.45, len / 2 + 0.3, c1); // roof slab
+      L.box('lamp', -hw - 0.32, h + 0.05, -len / 2 - 0.32, hw + 0.32, h + 0.4, -len / 2 - 0.3, c2); // glowing fascia
+      L.winQuad('window', [[-2.4, h + 0.55, -len / 2 - 0.05], [2.4, h + 0.55, -len / 2 - 0.05], [2.4, h + 1.45, -len / 2 - 0.05], [-2.4, h + 1.45, -len / 2 - 0.05]], c2, 4.8, 0.9, STYLE_ID.sign, 1.37, [0, 0, -1]);
+      L.box('solid', -2.5, h + 0.45, -len / 2 + 0.05, 2.5, h + 1.5, -len / 2 + 0.25, DARK); // sign backing
+      L.box('solid', -hw + 0.15, 0.02, -len / 2, hw - 0.15, 0.06, len / 2, col('#6f7378')); // wet floor
+      for (const x of [-1.0, 1.0]) L.box('solid', x - 0.08, 0.06, -len / 2 + 0.5, x + 0.08, 0.2, len / 2 - 0.5, col('#f2c94c')); // guide rails
+      L.box('lamp', -0.6, h - 0.08, -len / 4, 0.6, h - 0.02, len / 4, col('#ffffff'));
+      break;
+    }
+    case 'airPump': {
+      // Tyre air / water post: red cabinet, gauge screen, coiled hose.
+      L.box('solid', -0.22, 0, -0.18, 0.22, 1.35, 0.18, c1);
+      L.box('solid', -0.26, 1.35, -0.22, 0.26, 1.5, 0.22, col('#f2f2f0'));
+      L.box('lamp', -0.12, 0.95, -0.2, 0.12, 1.15, -0.18, col('#9fe6ff'));
+      L.shape('solid', SHAPES.tube, 0, 0.7, -0.24, 0.18, 0.05, 0.18, DARK, Z);
+      L.beam('solid', [0.15, 0.7, -0.2], [0.4, 0.05, -0.6], 0.03, DARK);
+      L.box('solid', -0.3, 1.55, -0.03, 0.3, 1.85, 0.03, col('#1f6fb5')); // "AIR" plate
+      break;
+    }
+    case 'vacuum': {
+      // Self-service vacuum: canister at the base, tall pole with an arm and two hoses.
+      L.shape('solid', SHAPES.cylLow, 0, 0.5, 0, 0.35, 1.0, 0.35, c1);
+      L.beam('solid', [0, 1.0, 0], [0, 3.0, 0], 0.09, STEEL);
+      L.beam('solid', [0, 3.0, 0], [1.2, 3.0, 0], 0.07, STEEL);
+      L.beam('solid', [1.2, 3.0, 0], [1.6, 1.0, 0.2], 0.05, DARK);
+      L.beam('solid', [0.25, 0.9, 0], [0.9, 0.3, -0.3], 0.05, DARK);
+      L.box('solid', -0.3, 2.5, -0.03, 0.3, 2.9, 0.03, c1);
+      break;
+    }
+    case 'evCharger': {
+      L.box('solid', -0.22, 0, -0.15, 0.22, 1.6, 0.15, col('#f2f2f0'));
+      L.box('lamp', -0.04, 0.4, -0.17, 0.04, 1.4, -0.15, col('#2ecc71')); // status strip
+      L.box('solid', -0.15, 1.1, -0.17, 0.15, 1.35, -0.15, DARK); // screen
+      L.beam('solid', [0.22, 0.9, 0], [0.5, 0.1, -0.4], 0.04, DARK); // cable
+      break;
+    }
+    case 'lpgCage': {
+      // Gas cylinder exchange cage: steel frame, a few cylinders inside.
+      L.box('solid', -0.85, 0, -0.45, 0.85, 0.08, 0.45, STEEL);
+      L.box('solid', -0.85, 1.4, -0.45, 0.85, 1.48, 0.45, STEEL);
+      for (const x of [-0.85, 0.85]) for (const z of [-0.45, 0.45]) L.beam('solid', [x, 0, z], [x, 1.45, z], 0.05, STEEL);
+      for (let k = 0; k < 4; k++) L.shape('solid', SHAPES.cylLow, -0.6 + k * 0.4, 0.45, 0, 0.15, 0.8, 0.15, c1);
+      break;
+    }
+    case 'iceChest': {
+      L.box('solid', -0.7, 0, -0.4, 0.7, 1.05, 0.4, col('#f2f2f0'));
+      L.box('solid', -0.72, 1.05, -0.42, 0.72, 1.15, 0.42, col('#1f6fb5'));
+      L.box('solid', -0.5, 0.45, -0.41, 0.5, 0.75, -0.4, col('#1f6fb5')); // "ICE" panel
+      break;
+    }
+    case 'vending': {
+      L.box('solid', -0.45, 0, -0.4, 0.45, 1.9, 0.4, c1);
+      L.box('lamp', -0.36, 0.7, -0.41, 0.2, 1.75, -0.4, col('#fff6e6'));
+      L.box('solid', 0.24, 0.9, -0.42, 0.38, 1.4, -0.4, DARK); // coin / card panel
+      break;
+    }
+    case 'tyreStack': {
+      // Puncture-repair stacks of used tyres.
+      const stacks = Math.round(p.w ?? 3);
+      for (let k = 0; k < stacks; k++) {
+        const n = 2 + Math.floor(h01(p.x + k, p.z) * 5);
+        for (let i = 0; i < n; i++) L.shape('solid', SHAPES.cylLow, -0.8 + k * 0.8, 0.12 + i * 0.24, (h01(k, i) - 0.5) * 0.08, 0.36, 0.22, 0.36, DARK);
       }
       break;
     }

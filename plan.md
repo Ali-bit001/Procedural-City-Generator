@@ -81,6 +81,9 @@ src/
 | **Warehouse** | Large low box | Few windows, roll-up doors | Sawtooth or flat roof, loading docks | size, number of docks |
 | **Factory** | Mixed boxes | Industrial cladding | Smokestacks, tanks, pipes | number of stacks, tanks |
 | **Civic** (hospital, school, stadium, station, parking garage) | One template each | Type-specific | Type-specific | template parameters |
+| **Places of worship** (mosque, church, temple, gurdwara) | Prayer hall + courtyard / nave + tower | Arched windows, carved screens, stained glass | Domes, minarets, spires, bell towers, shikhara | dome count, minaret count, courtyard, style |
+| **Hotel** | Tower or slab on a podium | Repetitive room windows, glazed lobby | Pool deck, lit name sign, rooftop bar | stars, height, porte-cochère, pool |
+| **Industrial** (warehouse, factory) | Big sheds, sawtooth / flat roofs, annexes | Ribbed metal cladding, high strip windows, dock doors | Smokestacks, tanks, silos, pipe racks, conveyors, cranes | size, process type, stack count |
 
 ---
 
@@ -98,6 +101,10 @@ src/
 | **B7** | Details and LOD: balconies, awnings, signs, fire escapes, LOD0/1/2, merging, instancing | 🟨 Chunks + 2 LODs done |
 | **B8** | Stress test: 30×30 grid of random buildings at 60 fps, set the performance budget | ⬜ |
 | **B9** | Civic templates: hospital, school, stadium, station, parking garage | ⬜ |
+| **B9a** | Places of worship: mosque (domes, minarets, courtyard, ablution area), church (nave, bell tower / spire, stained glass), Hindu temple (shikhara, mandapa), gurdwara (white domes, sarovar pool) | ⬜ |
+| **B9b** | Hotels: business tower, resort slab with pool deck, budget roadside motel; porte-cochère drop-off, lit name sign, flags | ⬜ |
+| **B9c** | Street & public extras (small structures, placed by the city layer): parks (paths, lawns, trees, ponds, playgrounds, gazebos, fountains), plazas, bus stands / shelters, metro entrances, taxi / rickshaw stands, kiosks & newsstands, public toilets, phone / EV charging points, garbage collection points and municipal dumps (skips, compactor trucks, landfill mounds), recycling centres, electrical substations, water towers, telecom towers, police / fire posts, petrol pumps along highways, traffic police booths, roadside chai stalls / dhabas, billboards, graveyards | ⬜ |
+| **B9d** | Industrial: warehouses / logistics, factories (smokestacks, tanks, silos, pipe racks, conveyors, gantry cranes) with animated smoke, fans, cranes and conveyors | ✅ Done |
 | **B10** | City integration (after roads and blocks exist): lots feed `BuildingSpec`s into the same generators | ⬜ |
 
 Types are built **one at a time**, each reviewed in the Lab before moving on.
@@ -249,7 +256,7 @@ File: `src/buildings/types/retail.ts`.
 
 - **Strip mall:** single-storey row of shops behind a covered walkway (`arcade` porch), marked parking with lot lights, pylon sign, loading doors and dumpsters on a service lane, rooftop AC units.
 - **Big-box store:** large box with a brand stripe, a taller glazed entrance block with the main sign, a second giant sign, loading docks with trucks backed in, rooftop units and skylights, a huge lot with trolley shelters.
-- **Petrol station:** fuel canopy (lit underneath, brand band glows at night) over pump islands, convenience store, price pylon, cars at the pumps.
+- **Petrol station:** fuel canopy (lit underneath, brand band glows at night) over pump islands with squeegee buckets, convenience store, price pylon, cars at the pumps. Extras: a drive-through car wash bay (lit sign, spinning brushes, sometimes a car inside), tyre air / water post, vacuum stations, EV chargers, puncture-repair tyre stacks, and an ice chest / gas-cylinder cage / vending machine along the shop front.
 - **Bazaar:** South Asian market row of narrow 2–3 storey shops in different colours, half-open roller shutters, stacked lit signboards, striped awnings, fruit stalls on the pavement; sunshades, iron balconies, ACs and tanks above.
 - **Car showroom:** tall glazed showroom with a brand cornice, service bays behind, a display forecourt with rows of angled cars, a hero car on a lit platform, pennant strings along the street and a pylon sign.
 - **Shop types** (`src/buildings/details/shops.ts`): every shopfront in strip malls, bazaars and mid-rise ground floors is a specific shop with its own signs, awning habits and frontage. Western and South Asian streets use different mixes.
@@ -262,5 +269,15 @@ File: `src/buildings/types/retail.ts`.
 - **Reusable new pieces:** `ParkingLot` (asphalt + stall lines, cars parked nose-in), arcade porch, pylon signs, fuel canopy / pumps, trolley shelters, dumpsters, trucks, market stalls, parking-lot light poles.
 - **Cost** (near / far): strip mall ~7,600 / ~500 (mostly parked cars), big box ~2,600 / ~1,200, petrol station ~1,800 / ~400, bazaar ~5,400 / ~2,900.
 
+## Done: Industrial
+
+File: `src/buildings/types/industrial.ts`; animation in `src/render/animation.ts`.
+
+- **Warehouse:** ribbed metal cladding (new `cladding` / `claddingStrip` shader styles), flat or sawtooth roof with north lights, loading docks with a canopy and trucks, glazed office annex, container stacks (sometimes under a gantry crane), rooftop and wall exhaust fans.
+- **Factory:** metal-clad or old brick sawtooth hall, boiler house, 1–3 smokestacks with aviation lights, tank farm in a bund with a pipe rack, silos fed by conveyors, rooftop cooling towers, crane yard, sometimes a wind turbine.
+- **Both:** security fence with gate and gatehouse, floodlights, forklifts, pallets, drums.
+- **GPU animation layer:** smoke and steam particles (billboards, wind drift, darker at night), spinning fans / turbine rotors / car-wash brushes, sliding gantry cranes and conveyor crates. All motion is computed in the vertex shader from one time uniform; one draw call per kind for the whole city. View → animations toggles it; animation-only frames are capped at 30 fps.
+- **Cost** (near / far): warehouse ~5,200 / ~2,600, factory ~5,000 / ~2,100, plus the animated layer.
+
 ## Next
-Waiting on feedback for retail, then industrial (warehouse, factory) and civic buildings.
+Waiting on feedback, then civic buildings, places of worship and hotels.

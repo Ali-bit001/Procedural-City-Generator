@@ -18,6 +18,8 @@ import { drawLight } from '../buildings/mesher/propMesher';
 import { MeshBuilder, col } from '../buildings/mesher/MeshBuilder';
 import { createCityMaterials } from '../render/materials';
 import { ChunkManager, type LotInstance } from '../render/chunks';
+import { AnimationLayer } from '../render/animation';
+import { generateIndustrial, type IndustrialForm } from '../buildings/types/industrial';
 import type { ApartmentStyle, HouseStyle, MidriseStyle, RowStyle, TowerStyle } from '../buildings/styles/palettes';
 import type { DetailOptions, HouseModel } from '../buildings/spec';
 
@@ -88,6 +90,9 @@ scene.add(sun, sun.target);
 const city = createCityMaterials();
 const chunks = new ChunkManager(city);
 scene.add(chunks.root);
+// Smoke, fans, cranes, conveyors: GPU-animated, one draw call per kind.
+const anim = new AnimationLayer();
+scene.add(anim.root);
 
 // Bloom only matters at night (bright lamps / lit windows / signs).
 const composer = new EffectComposer(renderer);
@@ -127,9 +132,9 @@ function applyQuality(q: Quality): void {
 
 // ---------------------------------------------------------------- params / GUI
 
-type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'apartments' | 'retail' | 'office towers';
+type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'apartments' | 'retail' | 'industrial' | 'office towers';
 const urlSeed = Number(url.get('seed'));
-const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'apartments', 'retail', 'office towers'];
+const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'apartments', 'retail', 'industrial', 'office towers'];
 const params = {
   seed: Number.isFinite(urlSeed) && urlSeed > 0 ? urlSeed : 1337,
   type: (TYPES.find((t) => t === url.get('type')) ?? 'mixed street') as BuildingType,
@@ -141,6 +146,8 @@ const params = {
   apartmentStyle: (url.get('aptStyle') ?? 'mixed') as 'mixed' | ApartmentStyle,
   apartmentForm: (url.get('form') ?? 'mixed') as 'mixed' | ApartmentForm,
   retailForm: (url.get('retail') ?? 'mixed') as 'mixed' | RetailForm,
+  industrialForm: (url.get('industrial') ?? 'mixed') as 'mixed' | IndustrialForm,
+  animate: url.get('animate') !== '0',
   towerDesign: (url.get('design') ?? 'mixed') as 'mixed' | TowerDesign,
   waterTanks: 0.4,
   props: 1,
@@ -171,6 +178,7 @@ gui.add(params, 'midriseStyle', ['mixed', 'southAsian', 'mainStreet', 'modern'])
 gui.add(params, 'apartmentStyle', ['mixed', 'panel', 'modern', 'southAsian', 'brick']).name('apartment style').onChange(regenerate);
 gui.add(params, 'apartmentForm', ['mixed', 'slab', 'tower', 'lBlock', 'courtyard']).name('apartment form').onChange(regenerate);
 gui.add(params, 'retailForm', ['mixed', 'stripMall', 'bigBox', 'gasStation', 'bazaar', 'carDealer']).name('retail form').onChange(regenerate);
+gui.add(params, 'industrialForm', ['mixed', 'warehouse', 'factory']).name('industrial form').onChange(regenerate);
 gui.add(params, 'towerStyle', ['mixed', 'glass', 'stone']).name('tower style').onChange(regenerate);
 gui.add(params, 'towerDesign', ['mixed', 'classic', 'spiral', 'flame', 'stacked', 'rotating', 'yTower']).name('tower design').onChange(regenerate);
 const det = gui.addFolder('Details');
@@ -179,6 +187,7 @@ det.add(params, 'props', 0, 2, 0.1).name('yard props').onFinishChange(regenerate
 det.add(params, 'cars', 0, 1, 0.05).name('parked cars').onFinishChange(regenerate);
 const view = gui.addFolder('View');
 view.add(params, 'night').name('🌙 night').onChange(applyTimeOfDay);
+view.add(params, 'animate').name('▶ animations').onChange(() => requestRender());
 view.add(params, 'quality', ['low', 'balanced', 'high']).name('quality').onChange(applyQuality);
 view.add(params, 'lodDistance', 40, 600, 10).name('detail distance').onChange((v: number) => {
   chunks.lodDistance = v;
@@ -226,6 +235,7 @@ function applyTimeOfDay(): void {
   sun.intensity = night ? 0.35 : 2.6;
   scene.environmentIntensity = night ? 0.06 : 0.35;
   city.setNight(night);
+  anim.setNight(night);
   bloom.enabled = night;
   groundMat.color.set(night ? '#3c4a33' : '#86a862');
   requestRender(true);
@@ -244,7 +254,7 @@ const labels = new THREE.Group();
 scene.add(labels);
 const groundMat = new THREE.MeshStandardMaterial({ color: '#86a862', roughness: 1 });
 
-type LotKind = 'house' | 'row' | 'midrise' | 'apartment' | 'retail' | 'tower';
+type LotKind = 'house' | 'row' | 'midrise' | 'apartment' | 'retail' | 'industrial' | 'tower';
 interface LotPlan {
   kind: LotKind;
   w: number;
@@ -259,11 +269,13 @@ function planLot(rng: RNG): LotPlan {
           : params.type === 'office towers' ? 'tower'
             : params.type === 'apartments' ? 'apartment'
               : params.type === 'retail' ? 'retail'
-                : rng.weighted<LotKind>([['house', 32], ['row', 20], ['midrise', 18], ['apartment', 13], ['retail', 9], ['tower', 8]]);
+                : params.type === 'industrial' ? 'industrial'
+                  : rng.weighted<LotKind>([['house', 30], ['row', 19], ['midrise', 17], ['apartment', 12], ['retail', 9], ['industrial', 6], ['tower', 7]]);
   if (kind === 'house') return { kind, w: rng.range(18, 26), d: rng.range(34, 40) };
   if (kind === 'row') return { kind, w: rng.range(28, 46), d: rng.range(28, 34) };
   if (kind === 'midrise') return { kind, w: rng.range(20, 36), d: rng.range(26, 34) };
   if (kind === 'apartment') return { kind, w: rng.range(34, 60), d: rng.range(36, 52) };
+  if (kind === 'industrial') return { kind, w: rng.range(55, 90), d: rng.range(60, 85) };
   if (kind === 'retail') {
     // Some retail forms need big lots; the generator falls back to a strip mall on small ones.
     const big = rng.chance(0.3);
@@ -276,6 +288,7 @@ function generateLot(plan: LotPlan, seed: number, details: DetailOptions): House
   const pick = <T extends string>(v: 'mixed' | T) => (v === 'mixed' ? undefined : v);
   if (plan.kind === 'house') return generateHouse({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.houseStyle), details });
   if (plan.kind === 'row') return generateRowhouses({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.rowStyle), details });
+  if (plan.kind === 'industrial') return generateIndustrial({ seed, lotWidth: plan.w, lotDepth: plan.d, form: pick(params.industrialForm), details });
   if (plan.kind === 'retail') return generateRetail({ seed, lotWidth: plan.w, lotDepth: plan.d, form: pick(params.retailForm), details });
   if (plan.kind === 'apartment') return generateApartment({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.apartmentStyle), form: pick(params.apartmentForm), details });
   if (plan.kind === 'midrise') return generateMidrise({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.midriseStyle), details });
@@ -321,6 +334,7 @@ function regenerate(): void {
   chunks.build(lots, { apronDepth: LOT_EDGE - STREET.asphalt, streetTreeZ: -(STREET.sidewalk + STREET.verge / 2) });
   chunks.update(camera.position);
   skyline = Math.max(...lots.map((l) => l.bounds!.max.y));
+  anim.build(lots.flatMap((l) => (l.model.animated ?? []).map((spec) => ({ spec, matrix: l.matrix }))));
   // Tall skylines need the haze pushed back or distant towers wash out.
   const fog = scene.fog as THREE.Fog;
   fog.near = 260 + skyline * 1.5;
@@ -518,6 +532,7 @@ applyTimeOfDay();
 applyQuality(params.quality);
 const timer = new THREE.Timer();
 let frames = 0;
+let animAccum = 0;
 let fpsTime = 0;
 let lastCalls = 0;
 let lastTris = 0;
@@ -534,6 +549,15 @@ renderer.setAnimationLoop(() => {
     moving = true;
   }
   if (applyKeys(dt)) moving = true;
+  // Animated parts: advance time; when only they change, redraw at most 30 times a second.
+  if (params.animate && anim.count > 0) {
+    anim.update(dt);
+    animAccum += dt;
+    if (animAccum >= 1 / 30) {
+      animAccum = 0;
+      needsRender = true;
+    }
+  }
   if (controls.update()) moving = true; // true while the camera is still gliding (damping)
   if (moving && chunks.update(camera.position)) requestRender(true);
   updateHover();
@@ -549,7 +573,7 @@ renderer.setAnimationLoop(() => {
   fpsTime += dt;
   if (fpsTime >= 1) {
     const s = chunks.stats();
-    const fps = frames ? `${Math.round(frames / fpsTime)} fps` : 'idle (0 fps)';
+    const fps = (frames ? `${Math.round(frames / fpsTime)} fps` : 'idle (0 fps)') + (params.animate && anim.count ? ` · ${anim.count} animated` : '');
     statsEl.innerHTML = `${buildInfo}<br>${fps} · ${lastCalls} draw calls · ${(lastTris / 1000).toFixed(0)}k tris drawn · ${s.near}/${s.chunks} chunks near`;
     frames = 0;
     fpsTime = 0;

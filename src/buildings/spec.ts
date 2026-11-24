@@ -71,7 +71,11 @@ export type WindowStyle =
   | 'sign'
   | 'glassPanel'
   /** Punched windows in a concrete / stone frame, one quad per floor. */
-  | 'grid';
+  | 'grid'
+  /** Ribbed metal cladding (no glass), for industrial sheds. */
+  | 'cladding'
+  /** Cladding with a glazed strip-window band near the top. */
+  | 'claddingStrip';
 
 export interface Opening {
   kind: OpeningKind;
@@ -194,6 +198,25 @@ export type PropKind =
   | 'carPlatform'
   | 'litterBin'
   | 'stringLights'
+  | 'smokestack'
+  | 'storageTank'
+  | 'silo'
+  | 'pipeRack'
+  | 'conveyor'
+  | 'container'
+  | 'pallets'
+  | 'drums'
+  | 'forklift'
+  | 'craneRails'
+  | 'turbineTower'
+  | 'carWashBay'
+  | 'airPump'
+  | 'vacuum'
+  | 'evCharger'
+  | 'lpgCage'
+  | 'iceChest'
+  | 'vending'
+  | 'tyreStack'
   | 'bins'
   | 'bench';
 
@@ -298,6 +321,21 @@ export interface ParkingLot {
   color: string;
 }
 
+/**
+ * Animated parts, drawn by the GPU-animated layer (render/animation.ts), not merged into chunks.
+ *   smoke   - rising, drifting particles from a stack top (steam = white, short-lived)
+ *   fan     - spinning blades; axis 'up' (rooftop) or along a wall normal (nx, nz)
+ *   rotor   - wind-turbine blades facing yaw 'rot'
+ *   shuttle - a part sliding along (dx, dy, dz): back and forth, or looping (conveyor crates)
+ */
+export type AnimSpec =
+  | { kind: 'smoke'; x: number; y: number; z: number; radius: number; amount: number; steam?: boolean }
+  | { kind: 'fan'; x: number; y: number; z: number; radius: number; speed: number; nx?: number; nz?: number }
+  | { kind: 'rotor'; x: number; y: number; z: number; radius: number; rot: number; speed: number }
+  /** Car-wash brush: a spinning bristle cylinder; vertical, or horizontal along yaw 'rot' when horizontal. */
+  | { kind: 'brush'; x: number; y: number; z: number; radius: number; height: number; speed: number; horizontal?: boolean; rot?: number }
+  | { kind: 'shuttle'; part: 'gantry' | 'crate'; x: number; y: number; z: number; rot: number; dx: number; dy: number; dz: number; speed: number; phase: number; loop: boolean; size: number; color: string };
+
 /** Axis-aligned volume that facade details (ACs, dishes) must stay out of. */
 export interface Blocker {
   x0: number;
@@ -329,6 +367,8 @@ export interface HouseModel {
   /** Whole lot is paved (commercial) instead of lawn. */
   paved?: boolean;
   pipes?: Pipe[];
+  /** Moving parts (smoke, fans, cranes, conveyors). */
+  animated?: AnimSpec[];
   parkingLots?: ParkingLot[];
   fireEscapes?: FireEscape[];
   /** Tower volumes (extruded polygons). */

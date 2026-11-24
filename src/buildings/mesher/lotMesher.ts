@@ -41,7 +41,7 @@ export interface LotMeshOptions {
 
 /** Props that still matter for the silhouette at a distance. */
 const FAR_PROPS: ReadonlySet<PropKind> = new Set<PropKind>([
-  'waterTank', 'waterTower', 'solarPanels', 'helipad', 'spire', 'cellTower', 'antennaCluster', 'bigDish', 'coolingTower', 'bmu', 'roofSign', 'pylonSign', 'fuelCanopy', 'truck',
+  'waterTank', 'waterTower', 'solarPanels', 'helipad', 'spire', 'cellTower', 'antennaCluster', 'bigDish', 'coolingTower', 'bmu', 'roofSign', 'pylonSign', 'fuelCanopy', 'truck', 'smokestack', 'storageTank', 'silo', 'pipeRack', 'conveyor', 'container', 'craneRails', 'turbineTower', 'carWashBay',
 ]);
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -370,7 +370,8 @@ function openingMesh(b: MeshBuilder, o: Opening, lod: Lod): void {
     return;
   }
 
-  wallQuad(b, 'window', o, -hw, hw, y0, y1, 0.03, c, STYLE_ID[style], litSeed);
+  // Doors / shopfronts sit a little proud of the wall so they never z-fight a full-wall cladding quad.
+  wallQuad(b, 'window', o, -hw, hw, y0, y1, o.kind === 'window' ? 0.03 : 0.045, c, STYLE_ID[style], litSeed);
   if (lod === 1) {
     if (o.shade?.kind === 'slab') wallBox(b, 'solid', o, -hw - 0.25, hw + 0.25, y1 + 0.06, y1 + 0.16, 0, 0.6, col(o.shade.color));
     return;
