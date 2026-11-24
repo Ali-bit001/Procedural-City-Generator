@@ -8,7 +8,7 @@
  */
 import * as THREE from 'three';
 import { FACE, LocalFrame, MeshBuilder, SHAPES, TEMPLATES, col, type BucketName } from './MeshBuilder';
-import { drawLight, drawLightFar, drawProp } from './propMesher';
+import { drawLight, drawLightFar, drawProp, drawPropFar } from './propMesher';
 import { STYLE_ID } from '../../render/windowMaterial';
 import {
   STEP_RUN,
@@ -17,6 +17,7 @@ import {
   type Balcony,
   type Fence,
   type FireEscape,
+  type ParkingLot,
   type Pipe,
   type HouseModel,
   type Mass,
@@ -40,7 +41,7 @@ export interface LotMeshOptions {
 
 /** Props that still matter for the silhouette at a distance. */
 const FAR_PROPS: ReadonlySet<PropKind> = new Set<PropKind>([
-  'waterTank', 'waterTower', 'solarPanels', 'helipad', 'spire', 'cellTower', 'antennaCluster', 'bigDish', 'coolingTower', 'bmu', 'roofSign',
+  'waterTank', 'waterTower', 'solarPanels', 'helipad', 'spire', 'cellTower', 'antennaCluster', 'bigDish', 'coolingTower', 'bmu', 'roofSign', 'pylonSign', 'fuelCanopy', 'truck',
 ]);
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -58,6 +59,7 @@ export function buildLotGeometry(model: HouseModel, opts: LotMeshOptions = {}): 
     if (opts.apronDepth) b.box('solid', d.x0, -0.14, -opts.apronDepth, d.x1, 0.035, 0, paving);
   }
   for (const p of model.paths) b.box('solid', p.x0, 0.02, p.z0, p.x1, 0.055, p.z1, paving);
+  for (const pl of model.parkingLots ?? []) parkingMesh(b, pl, lod);
 
   for (const m of model.masses) massMesh(b, m, model, lod);
   (model.polyMasses ?? []).forEach((pm, i) => polyMassMesh(b, pm, model.seed + i * 7919));
@@ -81,7 +83,11 @@ export function buildLotGeometry(model: HouseModel, opts: LotMeshOptions = {}): 
     if (lod === 1 && t.kind === 'shrub') continue;
     treeMesh(b, t, lod);
   }
-  for (const p of model.props) if (lod === 0 || FAR_PROPS.has(p.kind)) drawProp(b, p);
+  // Far away: big silhouettes stay as they are, chunky props (cars...) become cheap stand-ins, tiny ones drop.
+  for (const p of model.props) {
+    if (lod === 0 || FAR_PROPS.has(p.kind)) drawProp(b, p);
+    else drawPropFar(b, p);
+  }
   for (const l of model.lights) (lod === 0 ? drawLight : drawLightFar)(b, l);
   if (opts.streetTreeZ !== undefined) {
     model.streetTreeXs.forEach((x, i) =>
@@ -500,6 +506,20 @@ function fireEscapeMesh(b: MeshBuilder, fe: FireEscape, lod: Lod): void {
   }
 }
 
+// ---------------------------------------------------------------- parking
+
+function parkingMesh(b: MeshBuilder, pl: ParkingLot, lod: Lod): void {
+  const r = pl.rect;
+  b.box('solid', r.x0, 0.02, r.z0, r.x1, 0.07, r.z1, col(pl.color));
+  if (lod === 1) return;
+  const paint = col('#e9e6dc');
+  for (const row of pl.rows) {
+    for (let x = r.x0 + 0.3; x <= r.x1 - 0.3 + 1e-6; x += pl.stallWidth) {
+      b.box('solid', x - 0.05, 0.07, row.z0 + 0.25, x + 0.05, 0.075, row.z1 - 0.25, paint);
+    }
+  }
+}
+
 // ---------------------------------------------------------------- entrance
 
 function porchMesh(b: MeshBuilder, p: Porch, lod: Lod): void {
@@ -522,6 +542,19 @@ function porchMesh(b: MeshBuilder, p: Porch, lod: Lod): void {
     b.box('solid', p.stepX - sw, 0, r.z0 - run, p.stepX + sw, p.floorY * 0.5, r.z0, floorC, FACE.PZ);
   }
 
+  if (p.kind === 'arcade') {
+    // Covered walkway along a shop front: flat roof slab on a row of posts, fascia band on the edge.
+    const post = col(p.postColor);
+    b.box('solid', r.x0, p.roofY, r.z0, r.x1, p.roofY + 0.25, r.z1, col(p.roofColor), FACE.PZ);
+    b.box('solid', r.x0 - 0.05, p.roofY - 0.1, r.z0 - 0.05, r.x1 + 0.05, p.roofY + 0.45, r.z0 + 0.15, post);
+    const span = r.x1 - r.x0;
+    const nPosts = Math.max(2, Math.round(span / 4.5) + 1);
+    for (let i = 0; i < nPosts; i++) {
+      const x = r.x0 + 0.2 + ((span - 0.4) * i) / (nPosts - 1);
+      b.box('solid', x - 0.14, 0, r.z0 + 0.06, x + 0.14, p.roofY, r.z0 + 0.34, post, FACE.PY);
+    }
+    return;
+  }
   if (p.kind === 'stoop') {
     if (lod === 1) return;
     // Iron railings: top rails + newel posts as geometry, balusters as one cut-out quad per run.

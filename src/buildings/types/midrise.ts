@@ -27,6 +27,7 @@ import {
   type DetailContext,
 } from '../details/details';
 import { placeTrees } from '../details/planting';
+import { SHOPS, dressShopFront, pickShop, type ShopKind } from '../details/shops';
 import { summarizeProps } from './house';
 import {
   DEFAULT_DETAILS,
@@ -135,9 +136,15 @@ export function generateMidrise(spec: MidriseSpec): HouseModel {
   const shopTop = plinth + 0.05 + (SA ? gh - 1.55 : MS ? gh - 1.3 : gh - 1.0);
   const zf = ground.rect.z0;
 
+  // Shop frontages are collected here and merged into props / lights further down.
+  const shopProps: Prop[] = [];
+  const shopLights: Light[] = [];
+  const shopKinds: ShopKind[] = [];
   for (let i = 0; i < nShops; i++) {
     const cx = shopX0 + shopW * (i + 0.5);
-    const shutter = SA && rng.chance(0.45);
+    const kind = pickShop(rng, SA ? 'sa' : 'west');
+    shopKinds.push(kind);
+    const shutter = SA && rng.chance(SHOPS[kind].shutter);
     const shop = facade.add({
       kind: 'shopfront', massId: ground.id, wall: 'front', floor: 0, cx, cz: zf, nx: 0, nz: -1,
       width: shopW - 0.5, y0: plinth + 0.05, height: shopTop - plinth - 0.05,
@@ -152,9 +159,11 @@ export function generateMidrise(spec: MidriseSpec): HouseModel {
       facade.add({
         kind: 'sign', massId: ground.id, wall: 'front', floor: 0, cx, cz: zf, nx: 0, nz: -1,
         width: SA ? shopW - 0.3 : shopW - 1.2, y0: signY, height: sh,
-        color: rng.pick(pal.signs), frameColor: '#2b2b2b', mullions: false, lit: rng.chance(0.85),
+        color: rng.pick(SHOPS[kind].signs), frameColor: '#2b2b2b', mullions: false, lit: rng.chance(0.85),
       });
     }
+    // Only the space inside the lot (under a projecting upper floor on South Asian blocks).
+    dressShopFront(kind, { rng, props: shopProps, lights: shopLights, cx, z: zf, width: shopW - 0.2, depth: zf - 0.05, roofed: proj > 0, region: SA ? 'sa' : 'west', floorY: plinth, shopTop });
   }
   const lobbyX = lobbySide < 0 ? x0 + lobbyW / 2 : x1 - lobbyW / 2;
   const lobbyDoor = facade.add({
@@ -250,8 +259,8 @@ export function generateMidrise(spec: MidriseSpec): HouseModel {
   }
 
   // ---------- details ----------
-  const props: Prop[] = [];
-  const lights: Light[] = [];
+  const props: Prop[] = [...shopProps];
+  const lights: Light[] = [...shopLights];
   const back: Rect = { x0: 0.6, x1: W - 0.6, z0: FRONT + depth + 0.6, z1: D - 0.6 };
   const obstacles: Rect[] = [...masses.filter((m) => m.kind !== 'roofRoom').map((m) => m.rect)];
   const placer = new YardPlacer(rng, W, D, obstacles);
@@ -358,6 +367,7 @@ export function generateMidrise(spec: MidriseSpec): HouseModel {
       facade: curtainFront ? 'curtain wall' : winStyle,
       balconies: balconies.length,
       roof: summarizeProps(props.filter((p) => p.y > 1)),
+      'shop types': shopKinds.map((k) => SHOPS[k].label).join(', '),
       lot: `${W.toFixed(1)} × ${D.toFixed(1)} m`,
     },
   };

@@ -303,6 +303,279 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       L.poly('solid', [[0.9, h - 0.15, 0.12], [1.7, h - 0.12, 0], [1.7, h - 0.98, 0], [0.9, h - 1.0, 0.12]], c2);
       break;
     }
+    case 'pylonSign': {
+      // Tall roadside sign: two legs, a cabinet with 2-3 lit panels (front and back). Faces -z.
+      const h = p.h ?? 8;
+      const w = p.w ?? 3;
+      const panels = 2 + (h01(p.x, p.z) > 0.5 ? 1 : 0);
+      const ph = Math.min(1.4, (h * 0.45) / panels);
+      const top = h;
+      const bottom = top - panels * ph - 0.2;
+      for (const x of [-w * 0.32, w * 0.32]) L.box('solid', x - 0.16, 0, -0.16, x + 0.16, bottom, 0.16, c2);
+      L.box('solid', -w / 2, bottom, -0.3, w / 2, top + 0.15, 0.3, c2);
+      for (let k = 0; k < panels; k++) {
+        const y0 = bottom + 0.1 + k * ph;
+        const seed = 1 + h01(p.x + k, p.z) * 0.99;
+        const colors = ['#c0392b', '#1f6fb5', '#f1c40f', '#ffffff', '#27ae60', '#e67e22'];
+        const pc = col(k === panels - 1 ? p.color : colors[Math.floor(h01(k, p.x) * colors.length)]);
+        for (const s of [-1, 1]) {
+          const z = s * 0.31;
+          L.winQuad('window', s < 0
+            ? [[-w / 2 + 0.08, y0, z], [w / 2 - 0.08, y0, z], [w / 2 - 0.08, y0 + ph - 0.1, z], [-w / 2 + 0.08, y0 + ph - 0.1, z]]
+            : [[w / 2 - 0.08, y0, z], [-w / 2 + 0.08, y0, z], [-w / 2 + 0.08, y0 + ph - 0.1, z], [w / 2 - 0.08, y0 + ph - 0.1, z]],
+          pc, w - 0.16, ph - 0.1, STYLE_ID.sign, seed, [0, 0, s]);
+        }
+      }
+      break;
+    }
+    case 'fuelCanopy': {
+      // Petrol-station canopy: columns, deep slab, brand-coloured fascia, light panels underneath.
+      const w = p.w ?? 18;
+      const d = p.d ?? 12;
+      const h = p.h ?? 5.2;
+      for (const x of [-w / 3, w / 3]) for (const z of [-d / 4, d / 4]) L.box('solid', x - 0.3, 0, z - 0.3, x + 0.3, h, z + 0.3, c1);
+      L.box('solid', -w / 2, h, -d / 2, w / 2, h + 0.9, d / 2, c1);
+      // Brand band around the edge: drawn as a lamp so it glows at night, like real canopies.
+      L.box('lamp', -w / 2 - 0.05, h + 0.2, -d / 2 - 0.05, w / 2 + 0.05, h + 0.75, d / 2 + 0.05, c2);
+      for (let x = -w / 2 + 2; x < w / 2 - 1; x += 3) for (const z of [-d / 4, d / 4]) L.box('lamp', x - 0.6, h - 0.04, z - 0.4, x + 0.6, h, z + 0.4, col('#fff6e6'));
+      break;
+    }
+    case 'fuelPump': {
+      // Pump island: kerb + two dispensers with screens and hoses.
+      L.box('solid', -0.6, 0, -2.2, 0.6, 0.2, 2.2, col('#d9d6cf'));
+      for (const z of [-1.1, 1.1]) {
+        L.box('solid', -0.35, 0.2, z - 0.45, 0.35, 1.9, z + 0.45, col('#eeeeea'));
+        L.box('solid', -0.37, 1.55, z - 0.47, 0.37, 1.95, z + 0.47, c1);
+        L.box('glass', -0.36, 1.1, z - 0.25, 0.36, 1.4, z + 0.25, col('#1c2733'));
+        for (const s of [-1, 1]) L.beam('solid', [s * 0.36, 1.2, z], [s * 0.6, 0.5, z + 0.1], 0.04, DARK);
+      }
+      break;
+    }
+    case 'cartCorral': {
+      // Trolley return shelter: steel frame with a couple of trolleys in it.
+      const len = 3.6;
+      for (const x of [-0.6, 0.6]) {
+        L.beam('solid', [x, 0, -len / 2], [x, 1.0, -len / 2], 0.06, STEEL);
+        L.beam('solid', [x, 0, len / 2], [x, 1.0, len / 2], 0.06, STEEL);
+        L.beam('solid', [x, 1.0, -len / 2], [x, 1.0, len / 2], 0.05, STEEL);
+        L.beam('solid', [x, 0.5, -len / 2], [x, 0.5, len / 2], 0.04, STEEL);
+      }
+      L.box('solid', -0.62, 1.0, len / 2 - 0.05, 0.62, 1.6, len / 2 + 0.05, c1); // sign panel
+      for (const z of [-0.8, 0.2]) L.box('solid', -0.3, 0.25, z - 0.4, 0.3, 0.95, z + 0.4, col('#9aa0a6'));
+      break;
+    }
+    case 'dumpster': {
+      L.box('solid', -0.95, 0.12, -0.6, 0.95, 1.25, 0.6, c1);
+      L.poly('solid', [[-0.97, 1.25, -0.62], [0.97, 1.25, -0.62], [0.97, 1.4, 0.62], [-0.97, 1.4, 0.62]], c1.clone().multiplyScalar(0.8), [0, 1, -0.2]);
+      for (const x of [-0.75, 0.75]) for (const z of [-0.45, 0.45]) L.shape('solid', SHAPES.cylLow, x, 0.07, z, 0.07, 0.14, 0.07, DARK, X);
+      break;
+    }
+    case 'truck': {
+      // Delivery truck: cab at -z, box trailer behind.
+      const len = p.d ?? 12;
+      L.box('solid', -1.25, 0.6, -2.4, 1.25, 3.1, 0, c1); // cab
+      L.box('glass', -1.15, 2.0, -2.45, 1.15, 2.9, -2.3, col('#1c2733'));
+      L.box('solid', -1.3, 1.0, 0.2, 1.3, 4.0, len, c2); // trailer
+      L.box('solid', -1.2, 0.4, -2.3, 1.2, 0.9, len - 0.2, DARK); // chassis
+      for (const z of [-1.6, len - 3.0, len - 1.6]) for (const x of [-1.05, 1.05]) L.shape('solid', SHAPES.cylLow, x, 0.5, z, 0.5, 0.35, 0.5, DARK, X);
+      break;
+    }
+    case 'stall': {
+      // Market stall: table with crates of produce under a sloping tarp on four poles. Faces -z.
+      L.box('solid', -1.1, 0.75, -0.55, 1.1, 0.85, 0.55, col('#8a6a4a'));
+      for (const x of [-1.0, 1.0]) for (const z of [-0.45, 0.45]) L.beam('solid', [x, 0, z], [x, 0.75, z], 0.06, col('#6b4a33'));
+      const produce = ['#e74c3c', '#f39c12', '#f1c40f', '#27ae60', '#8e44ad', '#d35400', '#c0392b'];
+      for (let i = 0; i < 4; i++) {
+        const x = -0.8 + i * 0.53;
+        L.box('solid', x - 0.24, 0.85, -0.45, x + 0.24, 1.05, 0.05, col('#b5895a'));
+        L.box('solid', x - 0.2, 1.05, -0.4, x + 0.2, 1.15, 0.0, col(produce[Math.floor(h01(p.x + i, p.z) * produce.length)]));
+      }
+      for (const x of [-1.2, 1.2]) {
+        L.beam('solid', [x, 0, -0.8], [x, 2.1, -0.8], 0.05, STEEL);
+        L.beam('solid', [x, 0, 0.7], [x, 2.4, 0.7], 0.05, STEEL);
+      }
+      L.poly('solid', [[-1.35, 2.1, -0.95], [1.35, 2.1, -0.95], [1.35, 2.45, 0.8], [-1.35, 2.45, 0.8]], c1, [0, 1, -0.3]);
+      break;
+    }
+    // ------------------------------------------------------------ shop fronts
+    case 'cafeTable': {
+      // Round table + chairs (p.w = chair count); p.h > 0 adds an umbrella in p.color. Chairs in p.color2.
+      const chairs = p.w ?? 2;
+      const chair = c2;
+      L.shape('solid', SHAPES.cylLow, 0, 0.74, 0, 0.38, 0.04, 0.38, col('#e9e6df'));
+      L.beam('solid', [0, 0, 0], [0, 0.72, 0], 0.05, DARK);
+      for (let i = 0; i < chairs; i++) {
+        const a = (i / chairs) * Math.PI * 2 + 0.4;
+        const cx = Math.cos(a) * 0.62;
+        const cz = Math.sin(a) * 0.62;
+        L.box('solid', cx - 0.2, 0.43, cz - 0.2, cx + 0.2, 0.47, cz + 0.2, chair);
+        const bx = Math.cos(a) * 0.8;
+        const bz = Math.sin(a) * 0.8;
+        L.beam('solid', [bx, 0.45, bz], [bx, 0.85, bz], 0.05, chair);
+        L.beam('solid', [cx, 0, cz], [cx, 0.43, cz], 0.04, chair);
+      }
+      if ((p.h ?? 0) > 0) {
+        L.beam('solid', [0, 0.76, 0], [0, 2.3, 0], 0.04, col('#dcdcd8'));
+        L.shape('solid', SHAPES.cone, 0, 2.25, 0, 1.25, 0.45, 1.25, c1);
+      }
+      break;
+    }
+    case 'aBoard': {
+      // A-frame menu board facing -z.
+      const board = c1;
+      L.poly('solid', [[-0.28, 0, -0.22], [0.28, 0, -0.22], [0.28, 0.9, -0.02], [-0.28, 0.9, -0.02]], board, [0, 0.2, -1]);
+      L.poly('solid', [[-0.28, 0, 0.22], [0.28, 0, 0.22], [0.28, 0.9, 0.02], [-0.28, 0.9, 0.02]], board, [0, 0.2, 1]);
+      for (let k = 0; k < 4; k++) {
+        const y = 0.25 + k * 0.15;
+        const zf = -0.22 + (y / 0.9) * 0.2 - 0.012;
+        L.box('solid', -0.18, y, zf - 0.005, -0.18 + 0.36 * (0.5 + h01(p.x + k, p.z) * 0.5), y + 0.04, zf, col('#f4f1ea'));
+      }
+      break;
+    }
+    case 'planter': {
+      const w = p.w ?? 0.9;
+      L.box('solid', -w / 2, 0, -0.25, w / 2, 0.5, 0.25, c1);
+      for (let k = 0; k < Math.max(1, Math.round(w / 0.5)); k++) {
+        const x = -w / 2 + 0.25 + k * 0.5;
+        b.geometry('solid', TEMPLATES.blob, new THREE.Matrix4().compose(L.p(x, 0.62, 0), new THREE.Quaternion(), new THREE.Vector3(0.28, 0.25, 0.28)), col('#4f8a3a'));
+      }
+      break;
+    }
+    case 'flowerRack': {
+      // Three stepped tiers of buckets with flowers, against the shop front (back at +z).
+      const flowers = ['#e74c3c', '#f1c40f', '#ff8fab', '#9b59b6', '#ffffff', '#e67e22', '#c0392b'];
+      for (let t = 0; t < 3; t++) {
+        const y = 0.3 + t * 0.32;
+        const z = -0.35 + t * 0.28;
+        L.box('solid', -0.7, y - 0.04, z - 0.15, 0.7, y, z + 0.15, col('#6b4a33'));
+        for (let k = 0; k < 4; k++) {
+          const x = -0.55 + k * 0.37;
+          L.shape('solid', SHAPES.cylLow, x, y + 0.1, z, 0.12, 0.2, 0.12, col('#5a5f66'));
+          b.geometry('solid', TEMPLATES.blob, new THREE.Matrix4().compose(L.p(x, y + 0.32, z), new THREE.Quaternion(), new THREE.Vector3(0.16, 0.14, 0.16)), col(flowers[Math.floor(h01(p.x + k * 3, p.z + t) * flowers.length)]));
+        }
+      }
+      for (const x of [-0.68, 0.68]) L.beam('solid', [x, 0, -0.35], [x, 0.96, 0.21], 0.04, col('#6b4a33'));
+      break;
+    }
+    case 'produceDisplay': {
+      // Tiered crates leaning back against the shop front. p.color2 tints the goods (grey for hardware).
+      const w = p.w ?? 1.5;
+      const goods = p.color2 ? [p.color2, '#9aa0a6', '#5a5f66', '#c9a648'] : ['#e74c3c', '#f39c12', '#f1c40f', '#27ae60', '#8e44ad', '#d35400'];
+      for (let t = 0; t < 3; t++) {
+        const y = 0.35 + t * 0.3;
+        const z = -0.4 + t * 0.25;
+        for (let x = -w / 2 + 0.25; x < w / 2 - 0.2; x += 0.5) {
+          L.box('solid', x - 0.22, y - 0.18, z - 0.15, x + 0.22, y, z + 0.15, col('#b5895a'));
+          L.box('solid', x - 0.18, y, z - 0.11, x + 0.18, y + 0.08, z + 0.11, col(goods[Math.floor(h01(p.x + x * 7, p.z + t) * goods.length)]));
+        }
+      }
+      for (const x of [-w / 2, w / 2]) L.beam('solid', [x, 0, -0.4], [x, 1.05, 0.15], 0.05, col('#6b4a33'));
+      break;
+    }
+    case 'clothesRack': {
+      const w = p.w ?? 1.4;
+      for (const x of [-w / 2, w / 2]) L.beam('solid', [x, 0, 0], [x, 1.6, 0], 0.04, STEEL);
+      L.beam('solid', [-w / 2, 1.6, 0], [w / 2, 1.6, 0], 0.03, STEEL);
+      const cloth = ['#e74c3c', '#3498db', '#ecf0f1', '#f1c40f', '#9b59b6', '#2ecc71', '#e67e22', '#ff8fab', '#34495e'];
+      for (let x = -w / 2 + 0.15; x < w / 2 - 0.1; x += 0.16) {
+        const ch = 0.7 + h01(x * 9, p.x) * 0.5;
+        L.box('solid', x - 0.06, 1.55 - ch, -0.22, x + 0.06, 1.55, 0.22, col(cloth[Math.floor(h01(p.x + x * 13, p.z) * cloth.length)]));
+      }
+      break;
+    }
+    case 'motorbike': {
+      // Small motorbike, front at -z.
+      for (const z of [-0.65, 0.65]) L.shape('solid', SHAPES.cylLow, 0, 0.3, z, 0.3, 0.1, 0.3, DARK, X);
+      L.box('solid', -0.15, 0.35, -0.5, 0.15, 0.7, 0.45, c1); // body / tank
+      L.box('solid', -0.17, 0.7, 0.0, 0.17, 0.8, 0.6, DARK); // seat
+      L.beam('solid', [0, 0.35, -0.65], [0, 1.0, -0.5], 0.05, STEEL); // fork
+      L.beam('solid', [-0.35, 1.0, -0.5], [0.35, 1.0, -0.5], 0.04, DARK); // handlebar
+      L.box('lamp', -0.08, 0.85, -0.6, 0.08, 0.95, -0.52, col('#ffe2a8'));
+      break;
+    }
+    case 'bikeRack': {
+      // Hoops with a couple of bicycles (frames + wheel rings), along x.
+      const n = p.w ?? 3;
+      for (let i = 0; i < n; i++) {
+        const x = -((n - 1) * 0.8) / 2 + i * 0.8;
+        L.beam('solid', [x, 0, -0.3], [x, 0.8, -0.3], 0.05, STEEL);
+        L.beam('solid', [x, 0, 0.3], [x, 0.8, 0.3], 0.05, STEEL);
+        L.beam('solid', [x, 0.8, -0.3], [x, 0.8, 0.3], 0.05, STEEL);
+        if (h01(p.x + i, p.z) > 0.4) {
+          const bc = col(['#c0392b', '#1f6fb5', '#2b2b2b', '#27ae60', '#f1c40f'][Math.floor(h01(i, p.x) * 5)]);
+          for (const z of [-0.55, 0.55]) L.shape('solid', SHAPES.tube, x + 0.1, 0.35, z, 0.33, 0.03, 0.33, DARK, X);
+          L.beam('solid', [x + 0.1, 0.35, -0.55], [x + 0.1, 0.75, 0.1], 0.04, bc);
+          L.beam('solid', [x + 0.1, 0.75, 0.1], [x + 0.1, 0.35, 0.55], 0.04, bc);
+          L.beam('solid', [x + 0.1, 0.75, -0.3], [x + 0.1, 0.75, 0.1], 0.04, bc);
+        }
+      }
+      break;
+    }
+    case 'barberPole': {
+      // Wall-mounted striped pole; local -z points away from the wall.
+      L.box('solid', -0.06, 0.0, -0.12, 0.06, 1.1, 0, STEEL);
+      for (let k = 0; k < 6; k++) {
+        const c = [col('#c0392b'), col('#ffffff'), col('#1f6fb5')][k % 3];
+        L.shape(k % 3 === 1 ? 'lamp' : 'solid', SHAPES.cylLow, 0, 0.15 + k * 0.14, -0.2, 0.1, 0.14, 0.1, c);
+      }
+      L.shape('solid', SHAPES.sphere, 0, 1.02, -0.2, 0.11, 0.08, 0.11, STEEL);
+      break;
+    }
+    case 'crossSign': {
+      // Pharmacy cross on a bracket, glowing in p.color; local -z away from the wall.
+      L.beam('solid', [0, 0, 0], [0, 0, -0.5], 0.06, STEEL);
+      L.box('lamp', -0.12, -0.38, -0.62, 0.12, 0.38, -0.5, c1);
+      L.box('lamp', -0.38, -0.12, -0.62, 0.38, 0.12, -0.5, c1);
+      break;
+    }
+    case 'atm': {
+      // Through-the-wall cash machine: steel surround, lit screen, keypad. Local -z out of the wall.
+      L.box('solid', -0.45, 0.0, -0.08, 0.45, 1.6, 0, col('#9aa0a6'));
+      L.box('lamp', -0.25, 1.0, -0.1, 0.25, 1.35, -0.08, col('#6fc3ff'));
+      L.box('solid', -0.2, 0.75, -0.2, 0.2, 0.8, -0.08, DARK);
+      L.box('solid', -0.42, 1.45, -0.12, 0.42, 1.6, -0.08, c1); // brand header
+      break;
+    }
+    case 'pennants': {
+      // A string of triangular flags between two poles, sagging slightly; p.w = length along x.
+      const w = p.w ?? 10;
+      const h = p.h ?? 4.5;
+      for (const x of [-w / 2, w / 2]) L.beam('solid', [x, 0, 0], [x, h + 0.2, 0], 0.08, STEEL);
+      const flags = ['#e74c3c', '#f1c40f', '#1f6fb5', '#27ae60', '#ffffff'];
+      const n = Math.floor(w / 0.6);
+      for (let i = 0; i < n; i++) {
+        const x0 = -w / 2 + i * (w / n);
+        const x1 = x0 + w / n;
+        const sag = (x: number) => h - 0.5 * (1 - Math.pow((2 * x) / w, 2));
+        L.beam('solid', [x0, sag(x0), 0], [x1, sag(x1), 0], 0.015, DARK);
+        L.poly('solid', [[x0 + 0.05, sag(x0 + 0.05), 0], [x1 - 0.05, sag(x1 - 0.05), 0], [(x0 + x1) / 2, sag((x0 + x1) / 2) - 0.35, 0]], col(flags[i % flags.length]));
+      }
+      break;
+    }
+    case 'carPlatform': {
+      L.shape('solid', SHAPES.cyl, 0, 0.15, 0, 2.8, 0.3, 2.8, c1);
+      L.shape('lamp', SHAPES.tube, 0, 0.27, 0, 2.82, 0.04, 2.82, col('#ffffff'));
+      break;
+    }
+    case 'litterBin': {
+      L.shape('solid', SHAPES.cylLow, 0, 0.45, 0, 0.24, 0.9, 0.24, c1);
+      L.shape('solid', SHAPES.cylLow, 0, 0.93, 0, 0.27, 0.06, 0.27, DARK);
+      break;
+    }
+    case 'stringLights': {
+      // Festoon lights along x between -w/2 and w/2, sagging; glow at night.
+      const w = p.w ?? 6;
+      const h = p.h ?? 2.8;
+      const n = Math.max(4, Math.floor(w / 0.6));
+      const y = (x: number) => h - 0.35 * (1 - Math.pow((2 * x) / w, 2));
+      for (let i = 0; i < n; i++) {
+        const x0 = -w / 2 + (i * w) / n;
+        const x1 = x0 + w / n;
+        L.beam('solid', [x0, y(x0), 0], [x1, y(x1), 0], 0.012, DARK);
+        L.box('lamp', x0 - 0.05, y(x0) - 0.14, -0.05, x0 + 0.05, y(x0) - 0.04, 0.05, col('#ffd28a'));
+      }
+      break;
+    }
     case 'laundry': {
       // Clothes draped over a balcony rail: local -z points out of the building, origin on the rail top.
       const w = p.w ?? 2;
@@ -423,6 +696,48 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
 
 const LAMP = col('#ffe2a8');
 
+/**
+ * Cheap stand-ins for the far LOD: chunky props that would visibly "pop" out if dropped.
+ * Same position, footprint and colour as the full prop, a handful of boxes each.
+ * Returns false if the prop has no stand-in (it is simply skipped far away).
+ */
+export function drawPropFar(b: MeshBuilder, p: Prop): boolean {
+  const L = new LocalFrame(b, p.x, p.y, p.z, p.rot);
+  const c1 = col(p.color);
+  switch (p.kind) {
+    case 'car':
+      // body + cabin (~24 triangles instead of ~200)
+      L.box('solid', -0.88, 0.15, -2.2, 0.88, 0.95, 2.2, c1);
+      L.box('glass', -0.78, 0.95, -0.9, 0.78, 1.5, 1.2, col('#1c2733'));
+      return true;
+    case 'dumpster':
+      L.box('solid', -0.95, 0.12, -0.6, 0.95, 1.35, 0.6, c1);
+      return true;
+    case 'fuelPump':
+      L.box('solid', -0.4, 0, -1.6, 0.4, 1.9, 1.6, col('#eeeeea'));
+      return true;
+    case 'stall':
+    case 'produceDisplay':
+    case 'flowerRack':
+      L.box('solid', -1.0, 0, -0.5, 1.0, 1.1, 0.5, col('#b5895a'));
+      return true;
+    case 'cafeTable':
+    case 'patioSet':
+      // the umbrella is what reads from far away
+      if ((p.h ?? 1) > 0) L.shape('solid', SHAPES.cone, 0, 2.2, 0, 1.25, 0.45, 1.25, c1);
+      return true;
+    case 'motorbike':
+      L.box('solid', -0.2, 0.1, -0.8, 0.2, 0.95, 0.8, c1);
+      return true;
+    case 'bins':
+    case 'acUnit':
+      L.box('solid', -0.6, 0, -0.35, 0.6, 1.0, 0.35, c1);
+      return true;
+    default:
+      return false;
+  }
+}
+
 /** Far-LOD light: only the glowing part, so the city still sparkles at night. */
 export function drawLightFar(b: MeshBuilder, l: Light): void {
   const L = new LocalFrame(b, l.x, l.y, l.z, l.rot);
@@ -441,6 +756,9 @@ export function drawLightFar(b: MeshBuilder, l: Light): void {
       break;
     case 'streetLamp':
       L.box('lamp', -0.16, 6.24, -1.8, 0.16, 6.3, -1.25, LAMP);
+      break;
+    case 'lotLight':
+      for (const x of [-1.0, 1.0]) L.box('lamp', x - 0.35, 8.8, -0.25, x + 0.35, 8.95, 0.25, LAMP);
       break;
     case 'aviation':
       // Oversized on purpose: obstruction lights must read from far away.
@@ -472,6 +790,16 @@ export function drawLight(b: MeshBuilder, l: Light): void {
       L.beam('solid', [0, 0, 0], [0, 2.0, 0], 0.08, DARK);
       L.box('lamp', -0.14, 2.0, -0.14, 0.14, 2.35, 0.14, LAMP);
       L.shape('solid', SHAPES.cone, 0, 2.43, 0, 0.22, 0.18, 0.22, DARK);
+      break;
+    case 'lotLight':
+      // Parking-lot pole with two flood heads.
+      L.shape('solid', SHAPES.cylLow, 0, 0.35, 0, 0.3, 0.7, 0.3, col('#9a958c'));
+      L.beam('solid', [0, 0, 0], [0, 9, 0], 0.16, col('#5a5f66'));
+      L.beam('solid', [-1.0, 9, 0], [1.0, 9, 0], 0.1, col('#5a5f66'));
+      for (const x of [-1.0, 1.0]) {
+        L.box('solid', x - 0.35, 8.9, -0.25, x + 0.35, 9.15, 0.25, col('#5a5f66'));
+        L.box('lamp', x - 0.3, 8.84, -0.2, x + 0.3, 8.9, 0.2, LAMP);
+      }
       break;
     case 'aviation':
       // Red obstruction light on a short post (tall buildings, masts).

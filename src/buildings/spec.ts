@@ -105,7 +105,7 @@ export interface Opening {
 
 export interface Porch {
   /** porch: posts + roof; canopy: flat slab; stoop: raised landing + long stair + railings; hood: small hood over the door. */
-  kind: 'porch' | 'canopy' | 'stoop' | 'hood';
+  kind: 'porch' | 'canopy' | 'stoop' | 'hood' | 'arcade';
   rect: Rect;
   floorY: number;
   roofY: number;
@@ -172,6 +172,28 @@ export type PropKind =
   | 'roofSign'
   /** Washing hung over a balcony railing (wall-mounted frame, at the rail). */
   | 'laundry'
+  | 'pylonSign'
+  | 'fuelCanopy'
+  | 'fuelPump'
+  | 'cartCorral'
+  | 'dumpster'
+  | 'truck'
+  | 'stall'
+  | 'cafeTable'
+  | 'aBoard'
+  | 'planter'
+  | 'flowerRack'
+  | 'produceDisplay'
+  | 'clothesRack'
+  | 'motorbike'
+  | 'bikeRack'
+  | 'barberPole'
+  | 'crossSign'
+  | 'atm'
+  | 'pennants'
+  | 'carPlatform'
+  | 'litterBin'
+  | 'stringLights'
   | 'bins'
   | 'bench';
 
@@ -193,7 +215,7 @@ export interface Prop {
   h?: number;
 }
 
-export type LightKind = 'sconce' | 'ceiling' | 'bollard' | 'post' | 'streetLamp' | 'aviation';
+export type LightKind = 'sconce' | 'ceiling' | 'bollard' | 'post' | 'streetLamp' | 'aviation' | 'lotLight';
 
 export interface Light {
   kind: LightKind;
@@ -268,6 +290,14 @@ export interface FireEscape {
   color: string;
 }
 
+/** Marked parking: asphalt + stall lines. Each row is a strip along x with stalls every stallWidth. */
+export interface ParkingLot {
+  rect: Rect;
+  rows: { z0: number; z1: number }[];
+  stallWidth: number;
+  color: string;
+}
+
 /** Axis-aligned volume that facade details (ACs, dishes) must stay out of. */
 export interface Blocker {
   x0: number;
@@ -299,6 +329,7 @@ export interface HouseModel {
   /** Whole lot is paved (commercial) instead of lawn. */
   paved?: boolean;
   pipes?: Pipe[];
+  parkingLots?: ParkingLot[];
   fireEscapes?: FireEscape[];
   /** Tower volumes (extruded polygons). */
   polyMasses?: PolyMass[];

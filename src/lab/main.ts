@@ -13,6 +13,7 @@ import { generateRowhouses } from '../buildings/types/rowhouse';
 import { generateMidrise } from '../buildings/types/midrise';
 import { generateTower, type TowerDesign } from '../buildings/types/tower';
 import { generateApartment, type ApartmentForm } from '../buildings/types/apartment';
+import { generateRetail, type RetailForm } from '../buildings/types/retail';
 import { drawLight } from '../buildings/mesher/propMesher';
 import { MeshBuilder, col } from '../buildings/mesher/MeshBuilder';
 import { createCityMaterials } from '../render/materials';
@@ -126,9 +127,9 @@ function applyQuality(q: Quality): void {
 
 // ---------------------------------------------------------------- params / GUI
 
-type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'apartments' | 'office towers';
+type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'apartments' | 'retail' | 'office towers';
 const urlSeed = Number(url.get('seed'));
-const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'apartments', 'office towers'];
+const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'apartments', 'retail', 'office towers'];
 const params = {
   seed: Number.isFinite(urlSeed) && urlSeed > 0 ? urlSeed : 1337,
   type: (TYPES.find((t) => t === url.get('type')) ?? 'mixed street') as BuildingType,
@@ -139,6 +140,7 @@ const params = {
   towerStyle: 'mixed' as 'mixed' | TowerStyle,
   apartmentStyle: (url.get('aptStyle') ?? 'mixed') as 'mixed' | ApartmentStyle,
   apartmentForm: (url.get('form') ?? 'mixed') as 'mixed' | ApartmentForm,
+  retailForm: (url.get('retail') ?? 'mixed') as 'mixed' | RetailForm,
   towerDesign: (url.get('design') ?? 'mixed') as 'mixed' | TowerDesign,
   waterTanks: 0.4,
   props: 1,
@@ -168,6 +170,7 @@ gui.add(params, 'rowStyle', ['mixed', 'brownstone', 'terrace', 'modernTown']).na
 gui.add(params, 'midriseStyle', ['mixed', 'southAsian', 'mainStreet', 'modern']).name('mid-rise style').onChange(regenerate);
 gui.add(params, 'apartmentStyle', ['mixed', 'panel', 'modern', 'southAsian', 'brick']).name('apartment style').onChange(regenerate);
 gui.add(params, 'apartmentForm', ['mixed', 'slab', 'tower', 'lBlock', 'courtyard']).name('apartment form').onChange(regenerate);
+gui.add(params, 'retailForm', ['mixed', 'stripMall', 'bigBox', 'gasStation', 'bazaar', 'carDealer']).name('retail form').onChange(regenerate);
 gui.add(params, 'towerStyle', ['mixed', 'glass', 'stone']).name('tower style').onChange(regenerate);
 gui.add(params, 'towerDesign', ['mixed', 'classic', 'spiral', 'flame', 'stacked', 'rotating', 'yTower']).name('tower design').onChange(regenerate);
 const det = gui.addFolder('Details');
@@ -241,7 +244,7 @@ const labels = new THREE.Group();
 scene.add(labels);
 const groundMat = new THREE.MeshStandardMaterial({ color: '#86a862', roughness: 1 });
 
-type LotKind = 'house' | 'row' | 'midrise' | 'apartment' | 'tower';
+type LotKind = 'house' | 'row' | 'midrise' | 'apartment' | 'retail' | 'tower';
 interface LotPlan {
   kind: LotKind;
   w: number;
@@ -255,11 +258,17 @@ function planLot(rng: RNG): LotPlan {
         : params.type === 'mid-rise' ? 'midrise'
           : params.type === 'office towers' ? 'tower'
             : params.type === 'apartments' ? 'apartment'
-              : rng.weighted<LotKind>([['house', 34], ['row', 22], ['midrise', 20], ['apartment', 14], ['tower', 10]]);
+              : params.type === 'retail' ? 'retail'
+                : rng.weighted<LotKind>([['house', 32], ['row', 20], ['midrise', 18], ['apartment', 13], ['retail', 9], ['tower', 8]]);
   if (kind === 'house') return { kind, w: rng.range(18, 26), d: rng.range(34, 40) };
   if (kind === 'row') return { kind, w: rng.range(28, 46), d: rng.range(28, 34) };
   if (kind === 'midrise') return { kind, w: rng.range(20, 36), d: rng.range(26, 34) };
   if (kind === 'apartment') return { kind, w: rng.range(34, 60), d: rng.range(36, 52) };
+  if (kind === 'retail') {
+    // Some retail forms need big lots; the generator falls back to a strip mall on small ones.
+    const big = rng.chance(0.3);
+    return { kind, w: big ? rng.range(60, 85) : rng.range(26, 55), d: big ? rng.range(60, 80) : rng.range(28, 50) };
+  }
   return { kind, w: rng.range(40, 60), d: rng.range(45, 60) };
 }
 
@@ -267,6 +276,7 @@ function generateLot(plan: LotPlan, seed: number, details: DetailOptions): House
   const pick = <T extends string>(v: 'mixed' | T) => (v === 'mixed' ? undefined : v);
   if (plan.kind === 'house') return generateHouse({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.houseStyle), details });
   if (plan.kind === 'row') return generateRowhouses({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.rowStyle), details });
+  if (plan.kind === 'retail') return generateRetail({ seed, lotWidth: plan.w, lotDepth: plan.d, form: pick(params.retailForm), details });
   if (plan.kind === 'apartment') return generateApartment({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.apartmentStyle), form: pick(params.apartmentForm), details });
   if (plan.kind === 'midrise') return generateMidrise({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.midriseStyle), details });
   return generateTower({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.towerStyle), design: pick(params.towerDesign), details });

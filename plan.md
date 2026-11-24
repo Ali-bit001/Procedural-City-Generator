@@ -77,7 +77,7 @@ src/
 | **Apartment block** ✅ | Slab, point tower or courtyard | Punched windows, balconies | Flat roof, roof garden | floors 5–25, balcony style |
 | **Row house/townhouse** ✅ | Narrow joined boxes | Bay windows, stoops | Gable or flat roof, chimneys | width, colours, roof height variation |
 | **Suburban house** ✅ | Main block + wing + garage, or stacked volumes | Windows, door, porch | Gable, hip, shed or flat roof | style, floors, garage, wing, porch, pool |
-| **Shop/strip mall** | Wide, low box | Glass front, signs | Flat roof, big AC units | number of units, sign colours |
+| **Shop/strip mall** ✅ | Wide, low box | Glass front, signs | Flat roof, big AC units | number of units, sign colours |
 | **Warehouse** | Large low box | Few windows, roll-up doors | Sawtooth or flat roof, loading docks | size, number of docks |
 | **Factory** | Mixed boxes | Industrial cladding | Smokestacks, tanks, pipes | number of stacks, tanks |
 | **Civic** (hospital, school, stadium, station, parking garage) | One template each | Type-specific | Type-specific | template parameters |
@@ -243,4 +243,24 @@ Life      -> split ACs, satellite dishes, laundry on balconies, rooftop tanks / 
 - **Cost:** ~9,500 triangles near / ~4,400 far for a whole block (dozens of flats).
 
 ## Next
-Waiting on feedback for the apartments, then the next building type.
+## Done: Retail
+
+File: `src/buildings/types/retail.ts`.
+
+- **Strip mall:** single-storey row of shops behind a covered walkway (`arcade` porch), marked parking with lot lights, pylon sign, loading doors and dumpsters on a service lane, rooftop AC units.
+- **Big-box store:** large box with a brand stripe, a taller glazed entrance block with the main sign, a second giant sign, loading docks with trucks backed in, rooftop units and skylights, a huge lot with trolley shelters.
+- **Petrol station:** fuel canopy (lit underneath, brand band glows at night) over pump islands, convenience store, price pylon, cars at the pumps.
+- **Bazaar:** South Asian market row of narrow 2–3 storey shops in different colours, half-open roller shutters, stacked lit signboards, striped awnings, fruit stalls on the pavement; sunshades, iron balconies, ACs and tanks above.
+- **Car showroom:** tall glazed showroom with a brand cornice, service bays behind, a display forecourt with rows of angled cars, a hero car on a lit platform, pennant strings along the street and a pylon sign.
+- **Shop types** (`src/buildings/details/shops.ts`): every shopfront in strip malls, bazaars and mid-rise ground floors is a specific shop with its own signs, awning habits and frontage. Western and South Asian streets use different mixes.
+  - café / restaurant: tables and chairs, umbrellas when not under a roof, menu boards, planters, festoon string lights
+  - grocery: tiered produce crates (and a fruit stall on deep South Asian pavements); florist: flower stands
+  - pharmacy: glowing green cross; barber: barber pole; bank: ATM in the wall
+  - bakery: menu board and bench; clothing: clothes rails (South Asia); hardware: goods stacked outside
+  - mobile shop: bright signs; tea stall: plastic tables and chairs; motorbike shop: motorbikes lined up
+  - South Asian streets also get parked motorbikes in front of other shops
+- **Reusable new pieces:** `ParkingLot` (asphalt + stall lines, cars parked nose-in), arcade porch, pylon signs, fuel canopy / pumps, trolley shelters, dumpsters, trucks, market stalls, parking-lot light poles.
+- **Cost** (near / far): strip mall ~7,600 / ~500 (mostly parked cars), big box ~2,600 / ~1,200, petrol station ~1,800 / ~400, bazaar ~5,400 / ~2,900.
+
+## Next
+Waiting on feedback for retail, then industrial (warehouse, factory) and civic buildings.
