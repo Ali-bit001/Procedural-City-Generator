@@ -190,6 +190,31 @@ void main() {
 }
 `;
 
+/** Fountain droplets: ballistic arcs from the nozzle (aDir = horizontal velocity, aParams.w = launch vy). */
+const SPRAY_VERT = /* glsl */ `
+uniform float uTime;
+attribute vec3 aOrigin;
+attribute vec4 aParams; // phase, lifetime (s), droplet size (m), vertical launch speed (m/s)
+attribute vec4 aTint;   // horizontal velocity xz, unused, unused
+varying vec2 vUv;
+varying float vAlpha;
+varying vec3 vColor;
+#include <common>
+#include <fog_pars_vertex>
+void main() {
+  float age = fract(uTime / aParams.y + aParams.x);
+  float t = age * aParams.y;
+  vec3 p = aOrigin + vec3(aTint.x * t, aParams.w * t - 4.9 * t * t, aTint.y * t);
+  vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
+  mvPosition.xy += position.xy * aParams.z * (1.0 + age * 0.4);
+  gl_Position = projectionMatrix * mvPosition;
+  vUv = position.xy + 0.5;
+  vAlpha = 0.75 * smoothstep(0.0, 0.04, age) * (1.0 - smoothstep(0.9, 1.0, age));
+  vColor = vec3(0.72, 0.86, 0.97);
+  #include <fog_vertex>
+}
+`;
+
 // ---------------------------------------------------------------- layer
 
 export class AnimationLayer {
@@ -224,6 +249,7 @@ export class AnimationLayer {
     this.dispose();
     this.templates ??= { fan: FAN(), rotor: ROTOR(), gantry: GANTRY(), crate: CRATE(), brush: BRUSH() };
     const smoke: { origin: THREE.Vector3; params: number[]; tint: number[] }[] = [];
+    const spray: { origin: THREE.Vector3; params: number[]; tint: number[] }[] = [];
     const fans: { m: THREE.Matrix4; spin: [number, number] }[] = [];
     const rotors: { m: THREE.Matrix4; spin: [number, number] }[] = [];
     const brushes: { m: THREE.Matrix4; spin: [number, number] }[] = [];
@@ -254,6 +280,26 @@ export class AnimationLayer {
               params: [i / n + rand() * 0.02, life * (0.85 + rand() * 0.3), s.radius * (s.steam ? 1.6 : 1.7), s.steam ? 2.2 : 2.6],
               tint,
             });
+          }
+          break;
+        }
+        case 'spray': {
+          // Central jet falling back into the top bowl + a ring of 8 arcs that drop ~1.4 m into the basin at `radius`.
+          const g = 9.8;
+          const jet = (H: number, fall: number, dx: number, dz: number, reach: number, n: number, size: number) => {
+            const vy = Math.sqrt(2 * g * H);
+            const life = (vy + Math.sqrt(vy * vy + 2 * g * fall)) / g;
+            const vh = reach / life;
+            for (let i = 0; i < n; i++) {
+              const j = 0.08 * (rand() - 0.5);
+              spray.push({ origin: pos.clone(), params: [i / n + rand() * 0.02, life * (0.98 + rand() * 0.04), size, vy * (0.96 + rand() * 0.06)], tint: [dx * vh + j, dz * vh + j * (rand() - 0.5), 0, 0] });
+            }
+          };
+          jet(s.height, 0, 0, 0, 0, 80, 0.085);
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2;
+            const d = toWorld(Math.cos(a), 0, Math.sin(a));
+            jet(s.height * 0.35, 1.4, d.x, d.z, s.radius, 16, 0.07);
           }
           break;
         }
@@ -319,6 +365,31 @@ export class AnimationLayer {
       this.root.add(mesh);
     }
 
+    if (spray.length) {
+      const g = new THREE.InstancedBufferGeometry();
+      const quad = new THREE.PlaneGeometry(1, 1);
+      g.index = quad.index;
+      g.setAttribute('position', quad.getAttribute('position'));
+      g.setAttribute('aOrigin', new THREE.InstancedBufferAttribute(new Float32Array(spray.flatMap((p) => p.origin.toArray())), 3));
+      g.setAttribute('aParams', new THREE.InstancedBufferAttribute(new Float32Array(spray.flatMap((p) => p.params)), 4));
+      g.setAttribute('aTint', new THREE.InstancedBufferAttribute(new Float32Array(spray.flatMap((p) => p.tint)), 4));
+      g.instanceCount = spray.length;
+      const mat = new THREE.ShaderMaterial({
+        uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTime: { value: 0 }, uNight: { value: 0 } }]),
+        vertexShader: SPRAY_VERT,
+        fragmentShader: SMOKE_FRAG,
+        transparent: true,
+        depthWrite: false,
+        fog: true,
+      });
+      mat.uniforms.uTime = this.uTime;
+      mat.uniforms.uNight = this.uNight;
+      const mesh = new THREE.Mesh(g, mat);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = 10;
+      this.root.add(mesh);
+    }
+
     const instanced = (geom: THREE.BufferGeometry, mat: THREE.Material, list: { m: THREE.Matrix4; color?: THREE.Color }[], attrs: Record<string, [number[], number]>) => {
       if (!list.length) return;
       const g = geom.clone();
@@ -338,6 +409,6 @@ export class AnimationLayer {
     instanced(t.gantry, moveMaterial(this.uTime), gantries, { aMove: [gantries.flatMap((g) => g.move), 4], aMove2: [gantries.flatMap((g) => g.move2), 2] });
     instanced(t.crate, moveMaterial(this.uTime), crates, { aMove: [crates.flatMap((c) => c.move), 4], aMove2: [crates.flatMap((c) => c.move2), 2] });
 
-    this.count = smoke.length + fans.length + rotors.length + brushes.length + gantries.length + crates.length;
+    this.count = smoke.length + spray.length + fans.length + rotors.length + brushes.length + gantries.length + crates.length;
   }
 }

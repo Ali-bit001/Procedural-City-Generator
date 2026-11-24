@@ -20,6 +20,7 @@ import { createCityMaterials } from '../render/materials';
 import { ChunkManager, type LotInstance } from '../render/chunks';
 import { AnimationLayer } from '../render/animation';
 import { generateIndustrial, type IndustrialForm } from '../buildings/types/industrial';
+import { CIVIC_FORMS, civicLotSize, generateCivic, pickCivicForm, type CivicForm } from '../buildings/types/civic';
 import type { ApartmentStyle, HouseStyle, MidriseStyle, RowStyle, TowerStyle } from '../buildings/styles/palettes';
 import type { DetailOptions, HouseModel } from '../buildings/spec';
 
@@ -132,9 +133,17 @@ function applyQuality(q: Quality): void {
 
 // ---------------------------------------------------------------- params / GUI
 
-type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'apartments' | 'retail' | 'industrial' | 'office towers';
+type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'apartments' | 'retail' | 'industrial' | 'civic' | 'office towers';
+const CIVIC_GROUPS: Record<string, CivicForm[]> = {
+  health: ['hospital', 'clinic'],
+  education: ['primarySchool', 'highSchool', 'university'],
+  public: ['stadium', 'trainStation', 'busStand', 'parkingGarage', 'fireStation', 'policeStation'],
+  'parks & services': ['park', 'zoo', 'wasteYard', 'collectionPoint', 'utility'],
+};
+/** Small civic things that fit between ordinary buildings on a mixed street. */
+const STREET_CIVIC: CivicForm[] = ['clinic', 'primarySchool', 'fireStation', 'policeStation', 'parkingGarage', 'park', 'collectionPoint', 'busStand'];
 const urlSeed = Number(url.get('seed'));
-const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'apartments', 'retail', 'industrial', 'office towers'];
+const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'apartments', 'retail', 'industrial', 'civic', 'office towers'];
 const params = {
   seed: Number.isFinite(urlSeed) && urlSeed > 0 ? urlSeed : 1337,
   type: (TYPES.find((t) => t === url.get('type')) ?? 'mixed street') as BuildingType,
@@ -147,6 +156,7 @@ const params = {
   apartmentForm: (url.get('form') ?? 'mixed') as 'mixed' | ApartmentForm,
   retailForm: (url.get('retail') ?? 'mixed') as 'mixed' | RetailForm,
   industrialForm: (url.get('industrial') ?? 'mixed') as 'mixed' | IndustrialForm,
+  civicForm: url.get('civic') ?? 'mixed',
   animate: url.get('animate') !== '0',
   towerDesign: (url.get('design') ?? 'mixed') as 'mixed' | TowerDesign,
   waterTanks: 0.4,
@@ -179,6 +189,7 @@ gui.add(params, 'apartmentStyle', ['mixed', 'panel', 'modern', 'southAsian', 'br
 gui.add(params, 'apartmentForm', ['mixed', 'slab', 'tower', 'lBlock', 'courtyard']).name('apartment form').onChange(regenerate);
 gui.add(params, 'retailForm', ['mixed', 'stripMall', 'bigBox', 'gasStation', 'bazaar', 'carDealer']).name('retail form').onChange(regenerate);
 gui.add(params, 'industrialForm', ['mixed', 'warehouse', 'factory']).name('industrial form').onChange(regenerate);
+gui.add(params, 'civicForm', ['mixed', ...Object.keys(CIVIC_GROUPS), ...CIVIC_FORMS]).name('civic form').onChange(regenerate);
 gui.add(params, 'towerStyle', ['mixed', 'glass', 'stone']).name('tower style').onChange(regenerate);
 gui.add(params, 'towerDesign', ['mixed', 'classic', 'spiral', 'flame', 'stacked', 'rotating', 'yTower']).name('tower design').onChange(regenerate);
 const det = gui.addFolder('Details');
@@ -254,11 +265,19 @@ const labels = new THREE.Group();
 scene.add(labels);
 const groundMat = new THREE.MeshStandardMaterial({ color: '#86a862', roughness: 1 });
 
-type LotKind = 'house' | 'row' | 'midrise' | 'apartment' | 'retail' | 'industrial' | 'tower';
+type LotKind = 'house' | 'row' | 'midrise' | 'apartment' | 'retail' | 'industrial' | 'civic' | 'tower';
 interface LotPlan {
   kind: LotKind;
   w: number;
   d: number;
+  civic?: CivicForm;
+}
+
+function civicPool(): CivicForm[] {
+  const v = params.civicForm;
+  if (v in CIVIC_GROUPS) return CIVIC_GROUPS[v];
+  if ((CIVIC_FORMS as string[]).includes(v)) return [v as CivicForm];
+  return CIVIC_FORMS;
 }
 
 function planLot(rng: RNG): LotPlan {
@@ -270,7 +289,12 @@ function planLot(rng: RNG): LotPlan {
             : params.type === 'apartments' ? 'apartment'
               : params.type === 'retail' ? 'retail'
                 : params.type === 'industrial' ? 'industrial'
-                  : rng.weighted<LotKind>([['house', 30], ['row', 19], ['midrise', 17], ['apartment', 12], ['retail', 9], ['industrial', 6], ['tower', 7]]);
+                  : params.type === 'civic' ? 'civic'
+                    : rng.weighted<LotKind>([['house', 30], ['row', 19], ['midrise', 17], ['apartment', 12], ['retail', 9], ['industrial', 6], ['civic', 6], ['tower', 7]]);
+  if (kind === 'civic') {
+    const form = pickCivicForm(rng, params.type === 'civic' ? civicPool() : STREET_CIVIC);
+    return { kind, civic: form, ...civicLotSize(rng, form) };
+  }
   if (kind === 'house') return { kind, w: rng.range(18, 26), d: rng.range(34, 40) };
   if (kind === 'row') return { kind, w: rng.range(28, 46), d: rng.range(28, 34) };
   if (kind === 'midrise') return { kind, w: rng.range(20, 36), d: rng.range(26, 34) };
@@ -288,6 +312,7 @@ function generateLot(plan: LotPlan, seed: number, details: DetailOptions): House
   const pick = <T extends string>(v: 'mixed' | T) => (v === 'mixed' ? undefined : v);
   if (plan.kind === 'house') return generateHouse({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.houseStyle), details });
   if (plan.kind === 'row') return generateRowhouses({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.rowStyle), details });
+  if (plan.kind === 'civic') return generateCivic({ seed, lotWidth: plan.w, lotDepth: plan.d, form: plan.civic!, details });
   if (plan.kind === 'industrial') return generateIndustrial({ seed, lotWidth: plan.w, lotDepth: plan.d, form: pick(params.industrialForm), details });
   if (plan.kind === 'retail') return generateRetail({ seed, lotWidth: plan.w, lotDepth: plan.d, form: pick(params.retailForm), details });
   if (plan.kind === 'apartment') return generateApartment({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.apartmentStyle), form: pick(params.apartmentForm), details });

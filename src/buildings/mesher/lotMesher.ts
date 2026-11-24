@@ -9,6 +9,8 @@
 import * as THREE from 'three';
 import { FACE, LocalFrame, MeshBuilder, SHAPES, TEMPLATES, col, type BucketName } from './MeshBuilder';
 import { drawLight, drawLightFar, drawProp, drawPropFar } from './propMesher';
+import { courtMesh } from './courtMesher';
+import { plazaMesh, walkMesh, waterMesh } from './groundMesher';
 import { STYLE_ID } from '../../render/windowMaterial';
 import {
   STEP_RUN,
@@ -42,6 +44,7 @@ export interface LotMeshOptions {
 /** Props that still matter for the silhouette at a distance. */
 const FAR_PROPS: ReadonlySet<PropKind> = new Set<PropKind>([
   'waterTank', 'waterTower', 'solarPanels', 'helipad', 'spire', 'cellTower', 'antennaCluster', 'bigDish', 'coolingTower', 'bmu', 'roofSign', 'pylonSign', 'fuelCanopy', 'truck', 'smokestack', 'storageTank', 'silo', 'pipeRack', 'conveyor', 'container', 'craneRails', 'turbineTower', 'carWashBay',
+  'grandstand', 'floodlight', 'train', 'parkingDeck', 'garageRamp', 'statue', 'scoreboard', 'footbridge', 'aviary', 'gateArch', 'adBoards', 'ramp', 'gazebo', 'fountain', 'mound', 'waterTowerTall', 'clockTower', 'skip', 'pond', 'platformCanopy',
 ]);
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -60,6 +63,10 @@ export function buildLotGeometry(model: HouseModel, opts: LotMeshOptions = {}): 
   }
   for (const p of model.paths) b.box('solid', p.x0, 0.02, p.z0, p.x1, 0.055, p.z1, paving);
   for (const pl of model.parkingLots ?? []) parkingMesh(b, pl, lod);
+  for (const c of model.courts ?? []) courtMesh(b, c, lod);
+  for (const w of model.water ?? []) waterMesh(b, w);
+  for (const w of model.walks ?? []) walkMesh(b, w, model.pavingColor, lod);
+  for (const p of model.plazas ?? []) plazaMesh(b, p, model.pavingColor, lod);
 
   for (const m of model.masses) massMesh(b, m, model, lod);
   (model.polyMasses ?? []).forEach((pm, i) => polyMassMesh(b, pm, model.seed + i * 7919));

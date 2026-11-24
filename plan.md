@@ -100,10 +100,10 @@ src/
 | **B6** | Style system: palettes, realistic/stylized switch, material variation, night mode with lit windows | ⬜ |
 | **B7** | Details and LOD: balconies, awnings, signs, fire escapes, LOD0/1/2, merging, instancing | 🟨 Chunks + 2 LODs done |
 | **B8** | Stress test: 30×30 grid of random buildings at 60 fps, set the performance budget | ⬜ |
-| **B9** | Civic templates: hospital, school, stadium, station, parking garage | ⬜ |
+| **B9** | Civic: hospital, clinic, primary / high school, university campus, stadium, train station, bus stand, parking garage, fire station, police station | ✅ Done |
 | **B9a** | Places of worship: mosque (domes, minarets, courtyard, ablution area), church (nave, bell tower / spire, stained glass), Hindu temple (shikhara, mandapa), gurdwara (white domes, sarovar pool) | ⬜ |
 | **B9b** | Hotels: business tower, resort slab with pool deck, budget roadside motel; porte-cochère drop-off, lit name sign, flags | ⬜ |
-| **B9c** | Street & public extras (small structures, placed by the city layer): parks (paths, lawns, trees, ponds, playgrounds, gazebos, fountains), plazas, bus stands / shelters, metro entrances, taxi / rickshaw stands, kiosks & newsstands, public toilets, phone / EV charging points, garbage collection points and municipal dumps (skips, compactor trucks, landfill mounds), recycling centres, electrical substations, water towers, telecom towers, police / fire posts, petrol pumps along highways, traffic police booths, roadside chai stalls / dhabas, billboards, graveyards | ⬜ |
+| **B9c** | Street & public extras (small structures, placed by the city layer): parks (paths, lawns, trees, ponds, playgrounds, gazebos, fountains), plazas, bus stands / shelters, metro entrances, taxi / rickshaw stands, kiosks & newsstands, public toilets, phone / EV charging points, garbage collection points and municipal dumps (skips, compactor trucks, landfill mounds), recycling centres, electrical substations, water towers, telecom towers, police / fire posts, petrol pumps along highways, traffic police booths, roadside chai stalls / dhabas, billboards, graveyards | 🟨 Parks, bus stands, garbage points, waste yard, substations, water towers done |
 | **B9d** | Industrial: warehouses / logistics, factories (smokestacks, tanks, silos, pipe racks, conveyors, gantry cranes) with animated smoke, fans, cranes and conveyors | ✅ Done |
 | **B10** | City integration (after roads and blocks exist): lots feed `BuildingSpec`s into the same generators | ⬜ |
 
@@ -279,5 +279,61 @@ File: `src/buildings/types/industrial.ts`; animation in `src/render/animation.ts
 - **GPU animation layer:** smoke and steam particles (billboards, wind drift, darker at night), spinning fans / turbine rotors / car-wash brushes, sliding gantry cranes and conveyor crates. All motion is computed in the vertex shader from one time uniform; one draw call per kind for the whole city. View → animations toggles it; animation-only frames are capped at 30 fps.
 - **Cost** (near / far): warehouse ~5,200 / ~2,600, factory ~5,000 / ~2,100, plus the animated layer.
 
+## Done: Civic
+
+Files: `src/buildings/types/civic/` (`site.ts` toolkit, `grounds.ts` landscape toolkit, `health.ts`, `education.ts`, `public.ts`, `parks.ts`, `landscape.ts`); sports surfaces in `src/buildings/mesher/courtMesher.ts`; walks, lakes and plazas in `src/buildings/mesher/groundMesher.ts`.
+
+- **Linked paths** (`Site.linkPaths`): every door and extra target (courts, stands) is joined to the nearest path, drive, car park or the street by the shortest clear route: L-shaped, or round buildings via their edges. Used by the hospital, schools and university, so the buildings read as one campus.
+- **Shared site toolkit:** one `Site` per lot collects masses, windows, doors (which clear the windows they overlap), signs, parking, courts, fences with gates, flags, path furniture and trees, and emits a `HouseModel`. Each form has a recommended lot size (`CIVIC_LOTS`) and a frequency weight.
+- **Health:**
+  - hospital: tall ward block with a big red cross and rooftop helipad, glazed lobby with a drop-off canopy and loop, side and back wings, emergency department (canopy, red sign, ambulances, own drive), parking, flags
+  - clinic: 1–2 storeys, glass entrance under a canopy, lit green cross, a few stalls, sometimes an ambulance
+- **Education:**
+  - primary school: low L-block in bright colours, playground (climbing frame, swings, seesaw, slide on a soft surface), small pitch or court, school bus bay, bike rack, fence
+  - high school: 3-storey U-block around a courtyard, gym hall, running track around a football field with bleachers and floodlights, basketball or tennis court, buses, staff parking
+  - university campus: admin hall with a clock tower, quad with cross paths, fountain and benches, lecture halls, library with a portico, dorm slabs, courts, parking, campus bus, stadium-style sports ground
+- **Public:**
+  - stadium: pitch inside four roofed grandstands, floodlight masts, ticket booths, plaza, flags, parking; lit LED advertising boards round the pitch, sponsor banners on the backs of the stands, video scoreboard on an end stand
+  - train station: glazed concourse and wings, taxi rank, platforms with long canopies, tracks, trains, enclosed footbridge
+  - bus stand: terminal hall, sheltered island platforms, buses in the bays, rickshaws and taxis
+  - parking garage: 3–6 open decks with cars on every level, a two-lane scissor-ramp tower beside the decks (ramps alternate lanes and directions between landings at each end, so they never intersect), stair core, "P" signs
+  - fire station: bay doors, trucks on the apron, crew quarters, drill tower
+  - police station: blue sign, patrol cars with light bars, fenced yard
+- **Parks and services:**
+  - park (`landscape.ts`), laid out probabilistically:
+    - a style (formal, natural or sporty) sets path curvature, lake odds, tree density and the feature mix
+    - gates on the street side, sometimes on the sides and back; often a blobby lake
+    - 3–9 features placed by rejection sampling: fountain plaza (animated water spray), playground, gazebo with picnic tables, basketball or tennis court, statue, flower garden, toilets and kiosk, small pond; plus junctions with a shade tree
+    - walks join everything on a visibility graph (waypoints round obstacles and the lake). Each feature links by its shortest route, plus a few loops. Single hops bow gently, and multi-hop routes are smoothed
+    - walks over the lake become arched footbridges
+    - lamps and benches face the walks; formal parks get tree avenues; elsewhere trees grow in Gaussian clumps
+  - zoo (`landscape.ts`):
+    - street forecourt with a ticket office, gift shop, entrance arch, flags, car park and bus
+    - inside a fenced ground: a hub fountain and a flamingo lake with a bridge
+    - enclosures: savanna (giraffes, zebras, antelope), elephants, big cats, bears, hippos (sitting in the pool), rhinos, penguins and antelope. Each has its own ground, fence height, pool, rocks, trees and sometimes a keeper house, plus a viewing point facing the hub
+    - reptile house, cafe with tables, toilets and an aviary dome, all on the same curving walk network
+    - 10 low-poly animal species (`animal` prop)
+  - waste yard: landfill mounds with a bulldozer, transfer shed, weighbridge and gatehouse, skips, recycling dumpsters, garbage trucks
+  - collection point: walled pad with dumpsters and bag piles
+  - utility: substation (transformers, control house, pylons) and / or a water tower with a pump house
+- **Sports surfaces:** football, cricket, basketball, tennis, running track, playground; line markings only up close.
+- **Far LOD:** big structures (stands, floodlights, decks, canopies, towers) stay; rails, pylons and transformers get cheap stand-ins.
+- **Cost** (near / far):
+
+  | Form | Near | Far |
+  |---|---|---|
+  | clinic | ~2,100 | ~540 |
+  | primary school | ~4,600 | ~850 |
+  | fire station | ~3,300 | ~630 |
+  | police station | ~4,900 | ~820 |
+  | park | ~9,200 | ~3,100 |
+  | zoo | ~36,000 | ~8,000 |
+  | hospital | ~16,000 | ~3,600 |
+  | high school | ~15,800 | ~2,800 |
+  | stadium | ~17,500 | ~3,900 |
+  | train station | ~17,000 | ~3,700 |
+  | parking garage | ~17,000 | ~4,700 |
+  | university | ~49,000 | ~11,000 |
+
 ## Next
-Waiting on feedback, then civic buildings, places of worship and hotels.
+Waiting on feedback, then places of worship and hotels.

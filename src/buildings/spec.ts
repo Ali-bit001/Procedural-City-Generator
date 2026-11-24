@@ -217,6 +217,42 @@ export type PropKind =
   | 'iceChest'
   | 'vending'
   | 'tyreStack'
+  | 'goalPost'
+  | 'basketballHoop'
+  | 'climbingFrame'
+  | 'seesaw'
+  | 'bleachers'
+  | 'grandstand'
+  | 'floodlight'
+  | 'ambulance'
+  | 'fireTruck'
+  | 'bus'
+  | 'garbageTruck'
+  | 'bulldozer'
+  | 'skip'
+  | 'train'
+  | 'railTrack'
+  | 'parkingDeck'
+  | 'ramp'
+  | 'gazebo'
+  | 'fountain'
+  | 'mound'
+  | 'transformer'
+  | 'waterTowerTall'
+  | 'clockTower'
+  | 'picnicTable'
+  | 'pond'
+  | 'pylon'
+  | 'platformCanopy'
+  | 'garageRamp'
+  | 'adBoards'
+  | 'scoreboard'
+  | 'footbridge'
+  | 'animal'
+  | 'aviary'
+  | 'gateArch'
+  | 'statue'
+  | 'rock'
   | 'bins'
   | 'bench';
 
@@ -236,6 +272,8 @@ export interface Prop {
   w?: number;
   d?: number;
   h?: number;
+  /** Kind-specific count / variant (garage levels, animal species, open deck side ...). */
+  n?: number;
 }
 
 export type LightKind = 'sconce' | 'ceiling' | 'bollard' | 'post' | 'streetLamp' | 'aviation' | 'lotLight';
@@ -334,7 +372,38 @@ export type AnimSpec =
   | { kind: 'rotor'; x: number; y: number; z: number; radius: number; rot: number; speed: number }
   /** Car-wash brush: a spinning bristle cylinder; vertical, or horizontal along yaw 'rot' when horizontal. */
   | { kind: 'brush'; x: number; y: number; z: number; radius: number; height: number; speed: number; horizontal?: boolean; rot?: number }
+  /** Fountain: water droplets thrown up in a central jet and a ring of arcs landing within `radius`. */
+  | { kind: 'spray'; x: number; y: number; z: number; height: number; radius: number }
   | { kind: 'shuttle'; part: 'gantry' | 'crate'; x: number; y: number; z: number; rot: number; dx: number; dy: number; dz: number; speed: number; phase: number; loop: boolean; size: number; color: string };
+
+/** Sports surface with its line markings (drawn flat on the ground). */
+export interface Court {
+  kind: 'football' | 'basketball' | 'tennis' | 'track' | 'cricket' | 'playground';
+  rect: Rect;
+}
+
+/** Free-form footpath: a polyline of (x, z) points with a width (curving park / campus walks). */
+export interface Walkway {
+  pts: [number, number][];
+  width: number;
+  color?: string;
+}
+
+/** Irregular water body (lake / pond / pool in an enclosure) as a closed (x, z) polygon. */
+export interface WaterBody {
+  pts: [number, number][];
+  shore?: string;
+  /** Shore height (water sits 2 cm above); default 0.03. */
+  y?: number;
+}
+
+/** Round paved area (fountain plaza, path junction, viewing point). */
+export interface Plaza {
+  x: number;
+  z: number;
+  r: number;
+  color?: string;
+}
 
 /** Axis-aligned volume that facade details (ACs, dishes) must stay out of. */
 export interface Blocker {
@@ -370,6 +439,10 @@ export interface HouseModel {
   /** Moving parts (smoke, fans, cranes, conveyors). */
   animated?: AnimSpec[];
   parkingLots?: ParkingLot[];
+  courts?: Court[];
+  walks?: Walkway[];
+  water?: WaterBody[];
+  plazas?: Plaza[];
   fireEscapes?: FireEscape[];
   /** Tower volumes (extruded polygons). */
   polyMasses?: PolyMass[];

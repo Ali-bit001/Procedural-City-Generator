@@ -526,9 +526,10 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
     }
     case 'crossSign': {
       // Pharmacy cross on a bracket, glowing in p.color; local -z away from the wall.
-      L.beam('solid', [0, 0, 0], [0, 0, -0.5], 0.06, STEEL);
-      L.box('lamp', -0.12, -0.38, -0.62, 0.12, 0.38, -0.5, c1);
-      L.box('lamp', -0.38, -0.12, -0.62, 0.38, 0.12, -0.5, c1);
+      const cs = p.w ?? 1; // hospitals use a big one
+      L.beam('solid', [0, 0, 0], [0, 0, -0.5], 0.06 * cs, STEEL);
+      L.box('lamp', -0.12 * cs, -0.38 * cs, -0.5 - 0.12 * cs, 0.12 * cs, 0.38 * cs, -0.5, c1);
+      L.box('lamp', -0.38 * cs, -0.12 * cs, -0.5 - 0.12 * cs, 0.38 * cs, 0.12 * cs, -0.5, c1);
       break;
     }
     case 'atm': {
@@ -782,6 +783,498 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       }
       break;
     }
+    // ------------------------------------------------------------ civic: sport & play
+    case 'goalPost': {
+      // Football goal facing -z: posts, crossbar, sloping back frame.
+      const hw = (p.w ?? 7.32) / 2;
+      const h = p.h ?? 2.44;
+      const white = col('#f4f1ea');
+      for (const x of [-hw, hw]) {
+        L.beam('solid', [x, 0, 0], [x, h, 0], 0.12, white);
+        L.beam('solid', [x, h, 0], [x, 0, 1.8], 0.05, STEEL);
+      }
+      L.beam('solid', [-hw, h, 0], [hw, h, 0], 0.12, white);
+      L.beam('solid', [-hw, 0.05, 1.8], [hw, 0.05, 1.8], 0.05, STEEL);
+      break;
+    }
+    case 'basketballHoop': {
+      L.beam('solid', [0, 0, 0.9], [0, 3.3, 0.9], 0.14, STEEL);
+      L.beam('solid', [0, 3.3, 0.9], [0, 3.3, -0.2], 0.1, STEEL);
+      L.box('solid', -0.9, 2.9, -0.28, 0.9, 3.95, -0.22, col('#f4f1ea'));
+      L.box('solid', -0.3, 3.05, -0.3, 0.3, 3.5, -0.28, col('#c0392b'));
+      L.shape('solid', SHAPES.tube, 0, 3.05, -0.55, 0.23, 0.03, 0.23, col('#e67e22'));
+      break;
+    }
+    case 'climbingFrame': {
+      // Jungle gym: 2 x 2 m frame, deck, ladder, little slide.
+      for (const x of [-1, 1]) for (const z of [-1, 1]) L.beam('solid', [x, 0, z], [x, 2.4, z], 0.1, c1);
+      for (const y of [1.2, 2.4]) {
+        L.beam('solid', [-1, y, -1], [1, y, -1], 0.07, c1);
+        L.beam('solid', [-1, y, 1], [1, y, 1], 0.07, c1);
+        L.beam('solid', [-1, y, -1], [-1, y, 1], 0.07, c1);
+        L.beam('solid', [1, y, -1], [1, y, 1], 0.07, c1);
+      }
+      L.box('solid', -1, 1.15, -1, 1, 1.22, 1, c2);
+      L.poly('solid', [[1, 3.0, -1], [1, 3.0, 1], [0, 3.6, 1], [0, 3.6, -1]], c2, [1, 1, 0]);
+      L.poly('solid', [[-1, 3.0, -1], [-1, 3.0, 1], [0, 3.6, 1], [0, 3.6, -1]], c2, [-1, 1, 0]);
+      for (let y = 0.3; y < 1.2; y += 0.3) L.beam('solid', [-0.4, y, 1.25], [0.4, y, 1.25], 0.05, c2);
+      L.poly('solid', [[-0.35, 1.2, -1], [0.35, 1.2, -1], [0.35, 0.1, -2.8], [-0.35, 0.1, -2.8]], col('#f1c40f'), [0, 1, -0.5]);
+      break;
+    }
+    case 'seesaw': {
+      L.box('solid', -0.15, 0, -0.2, 0.15, 0.5, 0.2, STEEL);
+      L.beam('solid', [-1.8, 0.25, 0], [1.8, 0.75, 0], 0.16, c1);
+      for (const x of [-1.5, 1.5]) L.beam('solid', [x, x < 0 ? 0.3 : 0.7, -0.2], [x, x < 0 ? 0.6 : 1.0, 0.2], 0.04, STEEL);
+      break;
+    }
+    case 'bleachers': {
+      // Stepped aluminium seating facing -z; p.w long, p.h rows.
+      const w = p.w ?? 10;
+      const rows = Math.round(p.h ?? 5);
+      for (let i = 0; i < rows; i++) L.box('solid', -w / 2, 0, -rows * 0.4 + i * 0.8, w / 2, 0.4 + i * 0.42, -rows * 0.4 + (i + 1) * 0.8, i % 2 ? c1 : col('#c9ccd1'));
+      L.box('solid', -w / 2, 0.4 + rows * 0.42, rows * 0.4 - 0.05, w / 2, 1.5 + rows * 0.42, rows * 0.4, STEEL);
+      break;
+    }
+    case 'grandstand': {
+      // Big covered stand facing -z: stepped seating rows (two seat colours), back wall, cantilever roof.
+      const w = p.w ?? 60;
+      const d = p.d ?? 20;
+      const h = p.h ?? 12;
+      const rows = Math.max(6, Math.floor(d / 0.85));
+      const rowD = d / rows;
+      for (let i = 0; i < rows; i++) {
+        const top = 1.2 + (i / rows) * (h - 2);
+        L.box('solid', -w / 2, 0, -d / 2 + i * rowD, w / 2, top, -d / 2 + (i + 1) * rowD, Math.floor(i / 4) % 2 ? c1 : c2);
+      }
+      L.box('solid', -w / 2, 0, d / 2, w / 2, h + 3, d / 2 + 0.6, col('#c9c4b8'));
+      // Big sponsor banners on the outside of the back wall.
+      const banners = ['#c0392b', '#1f6fb5', '#f1c40f', '#27ae60', '#e67e22', '#1e1f22', '#e84393'];
+      const nb = Math.max(1, Math.min(4, Math.floor(w / 18)));
+      const bw = Math.min(14, (w / nb) * 0.7);
+      for (let i = 0; i < nb; i++) {
+        const bx = -w / 2 + (w / nb) * (i + 0.5);
+        const y0 = h * 0.3;
+        const y1 = y0 + Math.min(5, h * 0.4);
+        const bc = col(banners[Math.floor(h01(p.x + i * 7.3, p.z - i) * banners.length)]);
+        L.winQuad('window', [[bx + bw / 2, y0, d / 2 + 0.62], [bx - bw / 2, y0, d / 2 + 0.62], [bx - bw / 2, y1, d / 2 + 0.62], [bx + bw / 2, y1, d / 2 + 0.62]], bc, bw, y1 - y0, STYLE_ID.sign, 1 + h01(i, p.z) * 0.99, [0, 0, 1]);
+      }
+      for (let x = -w / 2 + 2; x <= w / 2 - 2; x += Math.max(8, w / 6)) L.beam('solid', [x, h + 3, d / 2 + 0.3], [x, h + 6.5, d / 2 + 0.3], 0.5, col('#9aa0a6'));
+      L.box('solid', -w / 2 - 1, h + 6.5, -d / 2 + 2, w / 2 + 1, h + 7.1, d / 2 + 0.6, col('#e9e6df'));
+      L.box('lamp', -w / 2, h + 6.4, -d / 2 + 2.4, w / 2, h + 6.48, -d / 2 + 3.0, col('#ffffff'));
+      break;
+    }
+    case 'floodlight': {
+      // Stadium floodlight mast with a lamp bank facing -z, tilted down.
+      const h = p.h ?? 35;
+      L.shape('solid', SHAPES.cylLow, 0, h / 2, 0, 0.6, h, 0.6, col('#9aa0a6'));
+      L.box('solid', -2.6, h - 0.2, -0.4, 2.6, h + 3.0, 0.2, col('#5a5f66'));
+      L.box('lamp', -2.4, h, -0.45, 2.4, h + 2.8, -0.4, col('#fffbe8'));
+      break;
+    }
+    // ------------------------------------------------------------ civic: vehicles
+    case 'ambulance': {
+      L.box('solid', -1.05, 0.5, -1.0, 1.05, 2.9, 3.0, col('#f4f1ea'));
+      L.box('solid', -1.0, 0.5, -2.6, 1.0, 2.1, -1.0, col('#f4f1ea'));
+      L.box('glass', -0.95, 1.4, -2.65, 0.95, 2.05, -2.0, col('#1c2733'));
+      L.box('solid', -1.07, 1.2, -2.6, 1.07, 1.5, 3.0, col('#c0392b'));
+      L.box('lamp', -0.6, 2.9, -0.9, -0.05, 3.1, -0.6, col('#ff2a1a'));
+      L.box('lamp', 0.05, 2.9, -0.9, 0.6, 3.1, -0.6, col('#2a6bff'));
+      for (const z of [-1.8, 2.2]) for (const x of [-0.95, 0.95]) L.shape('solid', SHAPES.cylLow, x, 0.4, z, 0.4, 0.3, 0.4, DARK, X);
+      break;
+    }
+    case 'fireTruck': {
+      const red = col('#b3121b');
+      L.box('solid', -1.25, 0.6, -4.5, 1.25, 3.2, -2.2, red);
+      L.box('glass', -1.15, 2.1, -4.55, 1.15, 3.0, -4.4, col('#1c2733'));
+      L.box('solid', -1.25, 0.6, -2.2, 1.25, 2.8, 4.5, red);
+      L.box('solid', -1.27, 1.4, -2.2, 1.27, 1.6, 4.5, col('#f4f1ea'));
+      for (const x of [-0.6, 0.6]) L.beam('solid', [x, 3.0, -2.0], [x, 3.0, 4.4], 0.12, STEEL); // ladder rails
+      for (let z = -1.8; z < 4.4; z += 0.5) L.beam('solid', [-0.6, 3.0, z], [0.6, 3.0, z], 0.05, STEEL);
+      L.box('lamp', -0.8, 3.2, -4.3, 0.8, 3.35, -4.0, col('#ff2a1a'));
+      for (const z of [-3.4, 2.0, 3.4]) for (const x of [-1.1, 1.1]) L.shape('solid', SHAPES.cylLow, x, 0.5, z, 0.5, 0.35, 0.5, DARK, X);
+      break;
+    }
+    case 'bus': {
+      // Bus along local z, front at -z; windows band on both sides.
+      const len = p.d ?? 11;
+      L.box('solid', -1.25, 0.35, -len / 2, 1.25, 3.1, len / 2, c1);
+      L.box('glass', -1.27, 1.6, -len / 2 + 0.4, 1.27, 2.6, len / 2 - 0.6, col('#1c2733'));
+      L.box('glass', -1.15, 1.2, -len / 2 - 0.02, 1.15, 2.7, -len / 2 + 0.1, col('#1c2733'));
+      L.box('lamp', -0.9, 2.75, -len / 2 - 0.03, 0.9, 2.95, -len / 2, col('#ffcf6b')); // destination board
+      for (const z of [-len / 2 + 2, len / 2 - 2.5]) for (const x of [-1.1, 1.1]) L.shape('solid', SHAPES.cylLow, x, 0.5, z, 0.5, 0.3, 0.5, DARK, X);
+      break;
+    }
+    case 'garbageTruck': {
+      L.box('solid', -1.2, 0.6, -4.2, 1.2, 3.0, -2.2, col('#f4f1ea'));
+      L.box('glass', -1.1, 1.9, -4.25, 1.1, 2.8, -4.1, col('#1c2733'));
+      L.box('solid', -1.25, 0.8, -2.1, 1.25, 3.4, 3.4, c1);
+      L.box('solid', -1.15, 0.6, 3.4, 1.15, 3.0, 4.6, col('#5a5f66')); // rear hopper
+      for (const z of [-3.2, 2.0, 3.2]) for (const x of [-1.05, 1.05]) L.shape('solid', SHAPES.cylLow, x, 0.5, z, 0.5, 0.35, 0.5, DARK, X);
+      break;
+    }
+    case 'bulldozer': {
+      const yellow = col('#f2c94c');
+      for (const x of [-1.2, 1.2]) L.box('solid', x - 0.35, 0, -1.6, x + 0.35, 0.9, 1.6, DARK);
+      L.box('solid', -0.9, 0.8, -1.2, 0.9, 1.9, 1.5, yellow);
+      L.box('solid', -0.7, 1.9, 0.0, 0.7, 3.0, 1.3, yellow);
+      L.box('glass', -0.65, 2.1, -0.02, 0.65, 2.9, 0.02, col('#1c2733'));
+      L.box('solid', -1.8, 0.1, -2.6, 1.8, 1.4, -2.3, yellow); // blade
+      for (const x of [-0.8, 0.8]) L.beam('solid', [x, 1.0, -2.3], [x, 1.2, -1.2], 0.15, DARK);
+      break;
+    }
+    case 'skip': {
+      // Open roll-off skip, contents mounded inside.
+      L.box('solid', -1.2, 0, -2.5, 1.2, 0.15, 2.5, c1);
+      for (const x of [-1.2, 1.2]) L.poly('solid', [[x, 0.1, -2.5], [x, 0.1, 2.5], [x * 1.08, 1.5, 3.0], [x * 1.08, 1.5, -3.0]], c1, [x, 0.2, 0]);
+      L.poly('solid', [[-1.2, 0.1, -2.5], [1.2, 0.1, -2.5], [1.3, 1.5, -3.0], [-1.3, 1.5, -3.0]], c1, [0, 0.2, -1]);
+      L.poly('solid', [[-1.2, 0.1, 2.5], [1.2, 0.1, 2.5], [1.3, 1.5, 3.0], [-1.3, 1.5, 3.0]], c1, [0, 0.2, 1]);
+      b.geometry('solid', TEMPLATES.blob, new THREE.Matrix4().compose(L.p(0, 1.2, 0), new THREE.Quaternion(), new THREE.Vector3(1.1, 0.6, 2.4)), col('#6b5d4f'));
+      break;
+    }
+    // ------------------------------------------------------------ civic: transport
+    case 'train': {
+      // Carriages along local z on rails (floor at y = 1.0); loco nose at -z.
+      const len = p.d ?? 60;
+      const n = Math.max(1, Math.round(len / 20));
+      const cl = len / n - 0.8;
+      for (let i = 0; i < n; i++) {
+        const z0 = -len / 2 + i * (cl + 0.8);
+        L.box('solid', -1.5, 1.0, z0, 1.5, 4.2, z0 + cl, i === 0 ? c2 : c1);
+        L.box('solid', -1.4, 4.2, z0 + 0.3, 1.4, 4.45, z0 + cl - 0.3, col('#9aa0a6'));
+        L.box('glass', -1.52, 2.4, z0 + 1, 1.52, 3.4, z0 + cl - 1, col('#1c2733'));
+        L.box('solid', -1.52, 1.5, z0 + 0.5, 1.52, 1.75, z0 + cl - 0.5, c2);
+        for (const zb of [z0 + 2.5, z0 + cl - 2.5]) L.box('solid', -1.1, 0.55, zb - 1.2, 1.1, 1.0, zb + 1.2, DARK); // bogies
+      }
+      L.box('glass', -1.3, 2.6, -len / 2 - 0.02, 1.3, 3.6, -len / 2 + 0.1, col('#1c2733'));
+      L.box('lamp', -1.0, 1.6, -len / 2 - 0.04, -0.6, 1.8, -len / 2, col('#fff6e6'));
+      L.box('lamp', 0.6, 1.6, -len / 2 - 0.04, 1.0, 1.8, -len / 2, col('#fff6e6'));
+      break;
+    }
+    case 'railTrack': {
+      // Ballast bed, sleepers and two rails along local x (p.w long).
+      const w = p.w ?? 60;
+      L.box('solid', -w / 2, 0, -1.6, w / 2, 0.3, 1.6, col('#8a8178'));
+      for (let x = -w / 2 + 0.4; x < w / 2; x += 1.2) L.box('solid', x - 0.13, 0.3, -1.25, x + 0.13, 0.42, 1.25, col('#5a4632'));
+      for (const z of [-0.72, 0.72]) L.box('solid', -w / 2, 0.42, z - 0.04, w / 2, 0.58, z + 0.04, col('#9aa0a6'));
+      break;
+    }
+    case 'parkingDeck': {
+      // One open deck of a parking garage: slab, columns down to the level below, parapet, bay lines.
+      const w = p.w ?? 40;
+      const d = p.d ?? 30;
+      const h = p.h ?? 3;
+      const conc = col('#c9c4b8');
+      L.box('solid', -w / 2, -0.3, -d / 2, w / 2, 0, d / 2, conc);
+      // Columns on the perimeter and along the aisle edges (clear of the stall rows).
+      for (let x = -w / 2 + 0.4; x <= w / 2 - 0.3; x += 7.8) for (const z of [-d / 2 + 0.3, -d / 2 + 5.9, d / 2 - 5.9, d / 2 - 0.3]) L.box('solid', x - 0.3, -h, z - 0.3, x + 0.3, -0.3, z + 0.3, conc);
+      L.box('solid', -w / 2, 0, -d / 2, w / 2, 1.0, -d / 2 + 0.2, c1);
+      L.box('solid', -w / 2, 0, d / 2 - 0.2, w / 2, 1.0, d / 2, c1);
+      L.box('solid', -w / 2, 0, -d / 2, -w / 2 + 0.2, 1.0, d / 2, c1);
+      if (p.n === 1) L.box('solid', w / 2 - 0.2, 0, -d / 2, w / 2, 0.2, d / 2, c1); // open to the ramp tower
+      else L.box('solid', w / 2 - 0.2, 0, -d / 2, w / 2, 1.0, d / 2, c1);
+      for (const zr of [-d / 2 + 0.5, d / 2 - 5.5]) for (let x = -w / 2 + 1; x < w / 2 - 1; x += 2.6) L.box('solid', x - 0.05, 0, zr, x + 0.05, 0.01, zr + 5, col('#f4f1ea'));
+      break;
+    }
+    case 'ramp': {
+      // Sloped ramp along local z from y = 0 (at -z) up to p.h (at +z), p.w wide, with kerbs.
+      const w = p.w ?? 6;
+      const len = p.d ?? 18;
+      const h = p.h ?? 3;
+      L.poly('solid', [[-w / 2, 0.02, -len / 2], [w / 2, 0.02, -len / 2], [w / 2, h, len / 2], [-w / 2, h, len / 2]], col('#b9b4aa'), [0, 1, -0.2]);
+      L.poly('solid', [[-w / 2, -0.25, -len / 2], [w / 2, -0.25, -len / 2], [w / 2, h - 0.3, len / 2], [-w / 2, h - 0.3, len / 2]], col('#a9a49a'), [0, -1, 0.2]);
+      for (const x of [-w / 2, w / 2]) L.beam('solid', [x, 0.5, -len / 2], [x, h + 0.5, len / 2], 0.2, col('#c9c4b8'));
+      break;
+    }
+    // ------------------------------------------------------------ civic: parks & utilities
+    case 'gazebo': {
+      const r = p.w ?? 2.5;
+      L.shape('solid', SHAPES.cylLow, 0, 0.15, 0, r, 0.3, r, col('#d8d2c4'));
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2;
+        L.beam('solid', [Math.cos(a) * r * 0.9, 0.3, Math.sin(a) * r * 0.9], [Math.cos(a) * r * 0.9, 2.6, Math.sin(a) * r * 0.9], 0.15, col('#f4f1ea'));
+      }
+      L.shape('solid', SHAPES.tube, 0, 0.9, 0, r * 0.9, 0.08, r * 0.9, col('#f4f1ea'));
+      L.shape('solid', SHAPES.cone, 0, 3.2, 0, r * 1.15, 1.3, r * 1.15, c1);
+      break;
+    }
+    case 'fountain': {
+      const r = p.w ?? 3;
+      L.shape('solid', SHAPES.tube, 0, 0.3, 0, r, 0.6, r, col('#d8d2c4'));
+      L.shape('solid', SHAPES.tube, 0, 0.58, 0, r + 0.15, 0.06, r + 0.15, col('#e9e6df'));
+      L.shape('water', SHAPES.cyl, 0, 0.25, 0, r - 0.05, 0.5, r - 0.05, col('#3aa6cc'));
+      L.shape('solid', SHAPES.cylLow, 0, 0.9, 0, 0.35, 1.8, 0.35, col('#d8d2c4'));
+      L.shape('solid', SHAPES.cylLow, 0, 1.8, 0, 1.0, 0.15, 1.0, col('#d8d2c4'));
+      L.shape('water', SHAPES.cylLow, 0, 1.9, 0, 0.9, 0.08, 0.9, col('#5fc0e0'));
+      break;
+    }
+    case 'mound': {
+      // Landfill heap: a few flattened lumps of soil and rubbish.
+      const r = p.w ?? 10;
+      const h = p.h ?? 5;
+      for (let k = 0; k < 5; k++) {
+        const a = h01(p.x + k, p.z) * Math.PI * 2;
+        const d = k === 0 ? 0 : r * 0.45 * h01(k, p.x);
+        b.geometry('solid', TEMPLATES.blob, new THREE.Matrix4().compose(L.p(Math.cos(a) * d, 0, Math.sin(a) * d), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), a), new THREE.Vector3(r * (k === 0 ? 1 : 0.55), h * (k === 0 ? 1 : 0.7), r * (k === 0 ? 0.85 : 0.5))), col(k % 2 ? '#6b5d4f' : '#7d7366'));
+      }
+      for (let k = 0; k < 8; k++) {
+        const a = h01(k, p.z) * Math.PI * 2;
+        const d = r * 0.6 * h01(p.x, k);
+        const debris = ['#c0392b', '#1f6fb5', '#f4f1ea', '#27ae60', '#f39c12'][k % 5];
+        L.box('solid', Math.cos(a) * d - 0.3, h * 0.55 * (1 - d / r), Math.sin(a) * d - 0.3, Math.cos(a) * d + 0.3, h * 0.55 * (1 - d / r) + 0.4, Math.sin(a) * d + 0.3, col(debris));
+      }
+      break;
+    }
+    case 'transformer': {
+      const grey = col('#8a8f96');
+      L.box('solid', -1.0, 0, -0.8, 1.0, 2.4, 0.8, grey);
+      for (let z = -0.6; z <= 0.61; z += 0.3) L.box('solid', 1.0, 0.3, z - 0.04, 1.35, 2.0, z + 0.04, grey); // cooling fins
+      for (const x of [-0.6, 0, 0.6]) for (let k = 0; k < 4; k++) L.shape('solid', SHAPES.cylLow, x, 2.5 + k * 0.18, 0, 0.12 - k * 0.01, 0.14, 0.12 - k * 0.01, col('#e9e6df'));
+      L.box('solid', -1.05, 0, -0.85, 1.05, 0.3, 0.85, col('#5a5f66'));
+      break;
+    }
+    case 'waterTowerTall': {
+      // Municipal water tower: column + big tank with conical underside and roof.
+      const h = p.h ?? 25;
+      const r = p.w ?? 5;
+      L.shape('solid', SHAPES.cyl, 0, h / 2, 0, 1.4, h, 1.4, c2);
+      L.shape('solid', SHAPES.cone, 0, h - 1.5, 0, r, 3, r, c1, new THREE.Vector3(0, -1, 0));
+      L.shape('solid', SHAPES.cyl, 0, h + 2.0, 0, r, 4, r, c1);
+      L.shape('solid', SHAPES.cone, 0, h + 4.6, 0, r * 1.02, 1.2, r * 1.02, c2);
+      L.shape('solid', SHAPES.tube, 0, h + 2.0, 0, r + 0.3, 0.12, r + 0.3, STEEL); // walkway rail
+      break;
+    }
+    case 'clockTower': {
+      const h = p.h ?? 20;
+      L.box('solid', -2, 0, -2, 2, h, 2, c1);
+      L.box('solid', -2.2, h - 4.5, -2.2, 2.2, h - 4.2, 2.2, c2);
+      for (const [nx, nz] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+        L.shape('lamp', SHAPES.cyl, nx * 2.02, h - 2.3, nz * 2.02, 1.2, 0.08, 1.2, col('#f4f1ea'), new THREE.Vector3(nx, 0, nz));
+        L.beam('solid', [nx * 2.1, h - 2.3, nz * 2.1], [nx * 2.1 + nz * 0.0, h - 1.5, nz * 2.1 + nx * 0.0], 0.08, DARK);
+      }
+      L.shape('solid', SHAPES.cone, 0, h + 2.0, 0, 2.6, 4, 2.6, c2);
+      break;
+    }
+    case 'pond': {
+      // Irregular pond: overlapping water discs with a stone / reed edge (p.w x p.d radii).
+      const rx = p.w ?? 6;
+      const rz = p.d ?? 4;
+      const lobes: [number, number, number, number][] = [[0, 0, rx, rz], [rx * 0.45, rz * 0.35, rx * 0.6, rz * 0.6], [-rx * 0.4, -rz * 0.3, rx * 0.55, rz * 0.65]];
+      for (const [x, z, a, c] of lobes) {
+        L.shape('solid', SHAPES.cyl, x, 0.04, z, a + 0.5, 0.08, c + 0.5, col('#8f8a7d'));
+        L.shape('water', SHAPES.cyl, x, 0.07, z, a, 0.1, c, col('#3f8fa8'));
+      }
+      for (let k = 0; k < 9; k++) {
+        const t = (k / 9) * Math.PI * 2 + h01(p.x, k) * 0.4;
+        const x = Math.cos(t) * (rx + 0.3);
+        const z = Math.sin(t) * (rz + 0.3);
+        if (k % 3 === 0) b.geometry('solid', TEMPLATES.blob, new THREE.Matrix4().compose(L.p(x, 0.15, z), new THREE.Quaternion(), new THREE.Vector3(0.5, 0.3, 0.45)), col('#9a958a'));
+        else for (let r = 0; r < 3; r++) L.beam('solid', [x + r * 0.15, 0, z], [x + r * 0.2, 0.9 + r * 0.2, z + 0.1], 0.04, col('#6f8a3a'));
+      }
+      break;
+    }
+    case 'pylon': {
+      // Lattice power-line tower: tapered legs, cross bracing, two cross-arms with insulators. Arms along x.
+      const h = p.h ?? 24;
+      const g = 0.11;
+      const st = col('#8f959c');
+      const legs: [number, number][] = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+      const base = 2.4;
+      const top = 0.7;
+      for (const [sx, sz] of legs) L.beam('solid', [sx * base, 0, sz * base], [sx * top, h, sz * top], g * 1.6, st);
+      for (let k = 0; k < 4; k++) {
+        const y0 = (h * k) / 4;
+        const y1 = (h * (k + 1)) / 4;
+        const w0 = base + (top - base) * (k / 4);
+        const w1 = base + (top - base) * ((k + 1) / 4);
+        L.beam('solid', [-w0, y0, -w0], [w1, y1, -w1], g, st);
+        L.beam('solid', [-w0, y0, w0], [w1, y1, w1], g, st);
+        L.beam('solid', [-w0, y0, -w0], [-w1, y1, w1], g, st);
+        L.beam('solid', [w0, y0, -w0], [w1, y1, w1], g, st);
+      }
+      for (const [y, a] of [[h * 0.78, 4.5], [h * 0.95, 3.2]] as const) {
+        L.beam('solid', [-a, y, 0], [a, y, 0], 0.22, st);
+        for (const x of [-a + 0.3, a - 0.3]) for (let i = 0; i < 4; i++) L.shape('solid', SHAPES.cylLow, x, y - 0.25 - i * 0.18, 0, 0.14, 0.12, 0.14, col('#e9e6df'));
+      }
+      L.shape('solid', SHAPES.cone, 0, h + 1.0, 0, 0.6, 2, 0.6, st);
+      break;
+    }
+    case 'platformCanopy': {
+      // Long railway platform canopy along x (p.w), p.d deep, columns down the middle, light strip under.
+      const w = p.w ?? 60;
+      const d = p.d ?? 6;
+      const h = p.h ?? 4;
+      for (let x = -w / 2 + 2; x <= w / 2 - 2 + 1e-6; x += Math.max(6, (w - 4) / Math.max(1, Math.round((w - 4) / 9)))) {
+        L.box('solid', x - 0.15, 0, -0.15, x + 0.15, h, 0.15, c2);
+        L.beam('solid', [x, h - 0.8, 0], [x, h, -d / 2], 0.12, c2);
+        L.beam('solid', [x, h - 0.8, 0], [x, h, d / 2], 0.12, c2);
+      }
+      L.poly('solid', [[-w / 2, h, -d / 2], [w / 2, h, -d / 2], [w / 2, h + 0.5, 0], [-w / 2, h + 0.5, 0]], c1, [0, 1, -0.3]);
+      L.poly('solid', [[w / 2, h, d / 2], [-w / 2, h, d / 2], [-w / 2, h + 0.5, 0], [w / 2, h + 0.5, 0]], c1, [0, 1, 0.3]);
+      L.poly('solid', [[w / 2, h - 0.02, -d / 2], [-w / 2, h - 0.02, -d / 2], [-w / 2, h - 0.02, d / 2], [w / 2, h - 0.02, d / 2]], c1, [0, -1, 0]);
+      L.box('lamp', -w / 2 + 1, h - 0.12, -0.25, w / 2 - 1, h - 0.04, 0.25, col('#fff6e6'));
+      break;
+    }
+    case 'garageRamp': {
+      // Two-lane scissor ramp tower along local z (p.d long, p.w wide, p.h per level, p.n levels).
+      // Lane A (x < 0) carries ramps from even levels going +z, lane B (x > 0) from odd levels going -z;
+      // flat landings span both lanes at alternating ends. Same-lane ramps are two levels apart, so they never meet.
+      const w = p.w ?? 7;
+      const d = p.d ?? 30;
+      const h = p.h ?? 3;
+      const n = p.n ?? 3;
+      const Lg = Math.min(6, d * 0.2);
+      const conc = col('#c9c4b8');
+      const deck = col('#b4afa5');
+      const t = 0.25;
+      const ramp = (xa: number, xb: number, za: number, ya: number, zb: number, yb: number, outer: number) => {
+        L.poly('solid', [[xa, ya, za], [xb, ya, za], [xb, yb, zb], [xa, yb, zb]], deck, [0, 1, 0]);
+        L.poly('solid', [[xa, ya - t, za], [xb, ya - t, za], [xb, yb - t, zb], [xa, yb - t, zb]], conc, [0, -1, 0]);
+        for (const x of [xa, xb]) L.poly('solid', [[x, ya - t, za], [x, ya, za], [x, yb, zb], [x, yb - t, zb]], conc, [x === xa ? -1 : 1, 0, 0]);
+        // outer parapet wall and inner kerb, sloped with the ramp (both faces)
+        const xo = outer < 0 ? xa : xb;
+        const xi = outer < 0 ? xb : xa;
+        for (const [x, hh] of [[xo, 1.0], [xi, 0.25]] as const) {
+          L.poly('solid', [[x, ya, za], [x, ya + hh, za], [x, yb + hh, zb], [x, yb, zb]], conc, [outer, 0, 0]);
+          L.poly('solid', [[x, ya, za], [x, ya + hh, za], [x, yb + hh, zb], [x, yb, zb]], conc, [-outer, 0, 0]);
+        }
+      };
+      const zs = -d / 2 + Lg;
+      const ze = d / 2 - Lg;
+      for (let k = 0; k < n; k++) {
+        if (k % 2 === 0) ramp(-w / 2, 0, zs, k * h + 0.02, ze, (k + 1) * h, -1);
+        else ramp(0, w / 2, ze, k * h + 0.02, zs, (k + 1) * h, 1);
+      }
+      for (let j = 1; j <= n; j++) {
+        const y = j * h;
+        const atPlus = j % 2 === 1;
+        const z0 = atPlus ? ze : -d / 2;
+        const z1 = atPlus ? d / 2 : zs;
+        L.box('solid', -w / 2, y - 0.3, z0, w / 2, y, z1, deck);
+        const zEnd = atPlus ? d / 2 : -d / 2;
+        L.box('solid', -w / 2, y, zEnd - 0.1, w / 2, y + 1.0, zEnd + 0.1, c1); // end parapet
+        L.box('solid', w / 2 - 0.15, y, z0, w / 2, y + 1.0, z1, c1); // outer parapet
+      }
+      for (const x of [-w / 2 + 0.25, 0, w / 2 - 0.25]) for (const z of [-d / 2 + 0.3, zs, ze, d / 2 - 0.3]) L.box('solid', x - 0.25, 0, z - 0.25, x + 0.25, n * h - 0.3, z + 0.25, conc);
+      // height-limit bar over the entry lane
+      L.box('solid', -w / 2, 2.3, -d / 2 - 0.4, 0, 2.5, -d / 2 - 0.2, col('#f2c94c'));
+      break;
+    }
+    case 'adBoards': {
+      // Pitch-side advertising hoardings along local x (p.w long, p.h tall), facing -z; lit panels in brand colours.
+      const w = p.w ?? 60;
+      const h = p.h ?? 0.9;
+      const brands = ['#c0392b', '#1f6fb5', '#f1c40f', '#27ae60', '#e67e22', '#8e44ad', '#1e1f22', '#e84393', '#16a085', '#f4f1ea'];
+      const n = Math.max(1, Math.round(w / 5));
+      const pw = w / n;
+      L.box('solid', -w / 2, 0, 0.02, w / 2, h, 0.25, DARK);
+      for (let i = 0; i < n; i++) {
+        const x0 = -w / 2 + i * pw + 0.04;
+        const x1 = x0 + pw - 0.08;
+        const bc = col(brands[Math.floor(h01(p.x + i * 3.1, p.z + i) * brands.length)]);
+        L.winQuad('window', [[x0, 0.08, 0], [x1, 0.08, 0], [x1, h - 0.05, 0], [x0, h - 0.05, 0]], bc, x1 - x0, h - 0.13, STYLE_ID.sign, 1 + h01(i, p.x) * 0.99, [0, 0, -1]);
+      }
+      break;
+    }
+    case 'scoreboard': {
+      // Big video screen on a frame, facing -z (p.w wide).
+      const w = p.w ?? 12;
+      const sh = w * 0.42;
+      for (const x of [-w * 0.35, w * 0.35]) L.beam('solid', [x, 0, 0.4], [x, 1.2, 0.4], 0.35, STEEL);
+      L.box('solid', -w / 2 - 0.3, 1.2, 0, w / 2 + 0.3, 1.2 + sh + 0.6, 0.8, DARK);
+      L.box('lamp', -w / 2, 1.5, -0.04, w / 2, 1.5 + sh * 0.62, 0, col('#3aa0ff'));
+      L.box('lamp', -w / 2, 1.5 + sh * 0.66, -0.04, -0.02, 1.5 + sh - 0.05, 0, col('#ffcf3a'));
+      L.box('lamp', 0.02, 1.5 + sh * 0.66, -0.04, w / 2, 1.5 + sh - 0.05, 0, col('#ff5a4a'));
+      break;
+    }
+    case 'footbridge': {
+      // Arched footbridge along local z (p.d span, p.w wide, p.h rise) with railings and stone abutments.
+      const len = p.d ?? 14;
+      const w = p.w ?? 2.6;
+      const rise = p.h ?? 1.2;
+      const N = 10;
+      const y = (u: number) => 0.3 + rise * Math.sin(Math.PI * u);
+      const zAt = (u: number) => -len / 2 + len * u;
+      const under = c1.clone().multiplyScalar(0.7);
+      const side = c1.clone().multiplyScalar(0.85);
+      for (let i = 0; i < N; i++) {
+        const u0 = i / N;
+        const u1 = (i + 1) / N;
+        L.poly('solid', [[-w / 2, y(u0), zAt(u0)], [w / 2, y(u0), zAt(u0)], [w / 2, y(u1), zAt(u1)], [-w / 2, y(u1), zAt(u1)]], c1, [0, 1, 0]);
+        L.poly('solid', [[-w / 2, y(u0) - 0.25, zAt(u0)], [w / 2, y(u0) - 0.25, zAt(u0)], [w / 2, y(u1) - 0.25, zAt(u1)], [-w / 2, y(u1) - 0.25, zAt(u1)]], under, [0, -1, 0]);
+        for (const x of [-w / 2, w / 2]) {
+          L.poly('solid', [[x, y(u0) - 0.25, zAt(u0)], [x, y(u0), zAt(u0)], [x, y(u1), zAt(u1)], [x, y(u1) - 0.25, zAt(u1)]], side, [x, 0, 0]);
+          L.beam('solid', [x, y(u0) + 1.0, zAt(u0)], [x, y(u1) + 1.0, zAt(u1)], 0.08, c2);
+          L.beam('solid', [x, y(u0), zAt(u0)], [x, y(u0) + 1.0, zAt(u0)], 0.08, c2);
+        }
+      }
+      for (const x of [-w / 2, w / 2]) L.beam('solid', [x, y(1), zAt(1)], [x, y(1) + 1.0, zAt(1)], 0.08, c2);
+      for (const z of [-len / 2, len / 2]) L.box('solid', -w / 2 - 0.4, 0, z - 0.8, w / 2 + 0.4, 0.4, z + 0.8, col('#a39d92'));
+      break;
+    }
+    case 'animal':
+      drawAnimal(L, p.n ?? 0, h01(p.x, p.z));
+      break;
+    case 'aviary': {
+      // Domed bird cage: low wall, meridian ribs, two rings.
+      const r = p.w ?? 7;
+      const steel = col('#e9e6df');
+      L.shape('solid', SHAPES.tube, 0, 0.4, 0, r, 0.8, r, col('#a39d92'));
+      const M = 10;
+      for (let k = 0; k < M; k++) {
+        const a = (k / M) * Math.PI * 2;
+        for (let i = 0; i < 6; i++) {
+          const t0 = (i / 6) * (Math.PI / 2);
+          const t1 = ((i + 1) / 6) * (Math.PI / 2);
+          L.beam('solid', [Math.cos(a) * r * Math.cos(t0), 0.8 + r * Math.sin(t0), Math.sin(a) * r * Math.cos(t0)], [Math.cos(a) * r * Math.cos(t1), 0.8 + r * Math.sin(t1), Math.sin(a) * r * Math.cos(t1)], 0.1, steel);
+        }
+      }
+      for (const t of [0.35, 0.8]) L.shape('solid', SHAPES.tube, 0, 0.8 + r * Math.sin(t), 0, r * Math.cos(t), 0.08, r * Math.cos(t), steel);
+      L.shape('solid', SHAPES.sphere, 0, 0.8 + r, 0, 0.4, 0.4, 0.4, steel);
+      break;
+    }
+    case 'gateArch': {
+      // Entrance arch: two pillars + a sign beam (lit sign on both faces); p.w span, p.h height.
+      const w = p.w ?? 8;
+      const h = p.h ?? 5;
+      for (const x of [-w / 2, w / 2]) {
+        L.box('solid', x - 0.6, 0, -0.6, x + 0.6, h, 0.6, c2);
+        L.shape('solid', SHAPES.cone, x, h + 0.6, 0, 0.9, 1.2, 0.9, c1);
+      }
+      L.box('solid', -w / 2, h - 1.6, -0.3, w / 2, h - 0.2, 0.3, c1);
+      for (const s of [-1, 1]) {
+        const z = s * 0.31;
+        const pts: [number, number, number][] = s < 0
+          ? [[-w / 2 + 0.7, h - 1.45, z], [w / 2 - 0.7, h - 1.45, z], [w / 2 - 0.7, h - 0.35, z], [-w / 2 + 0.7, h - 0.35, z]]
+          : [[w / 2 - 0.7, h - 1.45, z], [-w / 2 + 0.7, h - 1.45, z], [-w / 2 + 0.7, h - 0.35, z], [w / 2 - 0.7, h - 0.35, z]];
+        L.winQuad('window', pts, c1, w - 1.4, 1.1, STYLE_ID.sign, 1.5, [0, 0, s]);
+      }
+      break;
+    }
+    case 'statue': {
+      const stone = col('#cfc8bb');
+      L.box('solid', -0.9, 0, -0.9, 0.9, 0.5, 0.9, stone);
+      L.box('solid', -0.6, 0.5, -0.6, 0.6, 1.9, 0.6, stone);
+      L.box('solid', -0.25, 1.9, -0.18, 0.25, 2.8, 0.18, c1);
+      L.box('solid', -0.32, 2.8, -0.22, 0.32, 3.55, 0.22, c1);
+      L.shape('solid', SHAPES.sphere, 0, 3.8, 0, 0.2, 0.22, 0.2, c1);
+      L.beam('solid', [0.3, 3.4, 0], [0.75, 4.1, -0.2], 0.12, c1);
+      break;
+    }
+    case 'rock': {
+      const s = p.w ?? 1;
+      b.geometry('solid', TEMPLATES.blob, new THREE.Matrix4().compose(L.p(0, s * 0.35, 0), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.rot), new THREE.Vector3(s, s * 0.7, s * 0.85)), c1);
+      break;
+    }
+    case 'picnicTable': {
+      const wood = col('#8a6a4a');
+      L.box('solid', -0.9, 0.72, -0.4, 0.9, 0.78, 0.4, wood);
+      for (const z of [-0.75, 0.75]) L.box('solid', -0.9, 0.42, z - 0.15, 0.9, 0.47, z + 0.15, wood);
+      for (const x of [-0.7, 0.7]) {
+        L.beam('solid', [x, 0, -0.8], [x, 0.75, 0.2], 0.07, wood);
+        L.beam('solid', [x, 0, 0.8], [x, 0.75, -0.2], 0.07, wood);
+      }
+      break;
+    }
     case 'laundry': {
       // Clothes draped over a balcony rail: local -z points out of the building, origin on the rail top.
       const w = p.w ?? 2;
@@ -874,6 +1367,11 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       L.box('lamp', 0.5, 0.7, -2.16, 0.8, 0.82, -2.14, col('#f4f1e0'));
       L.box('solid', -0.8, 0.7, 2.14, -0.5, 0.82, 2.16, col('#a01818'));
       L.box('solid', 0.5, 0.7, 2.14, 0.8, 0.82, 2.16, col('#a01818'));
+      if (p.h) {
+        // police light bar
+        L.box('lamp', -0.55, 1.52, -0.15, -0.02, 1.64, 0.15, col('#ff2a1a'));
+        L.box('lamp', 0.02, 1.52, -0.15, 0.55, 1.64, 0.15, col('#2a6bff'));
+      }
       break;
     }
     case 'mailbox': {
@@ -934,6 +1432,36 @@ export function drawPropFar(b: MeshBuilder, p: Prop): boolean {
       return true;
     case 'motorbike':
       L.box('solid', -0.2, 0.1, -0.8, 0.2, 0.95, 0.8, c1);
+      return true;
+    case 'railTrack': {
+      // ballast + two rails, no sleepers
+      const w = p.w ?? 60;
+      L.box('solid', -w / 2, 0, -1.6, w / 2, 0.38, 1.6, col('#7d756b'));
+      for (const z of [-0.72, 0.72]) L.box('solid', -w / 2, 0.38, z - 0.05, w / 2, 0.56, z + 0.05, col('#9aa0a6'));
+      return true;
+    }
+    case 'pylon': {
+      const h = p.h ?? 24;
+      const st = col('#8f959c');
+      for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) L.beam('solid', [sx * 2.4, 0, sz * 2.4], [sx * 0.7, h, sz * 0.7], 0.25, st);
+      L.beam('solid', [-4.5, h * 0.78, 0], [4.5, h * 0.78, 0], 0.3, st);
+      L.beam('solid', [-3.2, h * 0.95, 0], [3.2, h * 0.95, 0], 0.3, st);
+      return true;
+    }
+    case 'transformer':
+      L.box('solid', -1.05, 0, -0.85, 1.35, 2.4, 0.85, c1);
+      return true;
+    case 'bus':
+      L.box('solid', -1.25, 0.35, -(p.d ?? 11) / 2, 1.25, 3.1, (p.d ?? 11) / 2, c1);
+      return true;
+    case 'ambulance':
+      L.box('solid', -1.05, 0.4, -2.6, 1.05, 2.9, 3.0, col('#f4f1ea'));
+      return true;
+    case 'fireTruck':
+      L.box('solid', -1.25, 0.4, -4.5, 1.25, 3.2, 4.5, col('#b3121b'));
+      return true;
+    case 'garbageTruck':
+      L.box('solid', -1.25, 0.4, -4.2, 1.25, 3.4, 4.6, c1);
       return true;
     case 'bins':
     case 'acUnit':
@@ -1020,4 +1548,103 @@ export function drawLight(b: MeshBuilder, l: Light): void {
       L.box('lamp', -0.16, 6.24, -1.8, 0.16, 6.3, -1.25, LAMP);
       break;
   }
+}
+
+// ---------------------------------------------------------------- zoo animals (low-poly, head towards -z)
+
+interface Beast {
+  color: string;
+  legH: number;
+  /** width, height, length */
+  body: [number, number, number];
+  /** neck length, thickness */
+  neck?: [number, number];
+  head: [number, number, number];
+  extra?: (L: LocalFrame, top: number) => void;
+}
+
+const BEASTS: Beast[] = [
+  // 0 elephant
+  { color: '#8d8a86', legH: 1.3, body: [1.7, 1.7, 3.0], head: [1.1, 1.1, 0.9], extra: (L, top) => {
+    const c = col('#8d8a86');
+    L.beam('solid', [0, top - 1.0, -2.0], [0, 0.4, -2.3], 0.22, c); // trunk
+    for (const s of [-1, 1]) {
+      L.box('solid', s * 0.55, top - 1.2, -1.75, s * 0.95, top - 0.2, -1.65, c.clone().multiplyScalar(0.9)); // ears
+      L.beam('solid', [s * 0.3, top - 1.3, -1.9], [s * 0.35, top - 1.2, -2.5], 0.08, col('#f4f1ea')); // tusks
+    }
+  } },
+  // 1 giraffe
+  { color: '#d9a441', legH: 1.9, body: [0.8, 0.95, 1.9], neck: [2.4, 0.3], head: [0.32, 0.32, 0.65], extra: (L, top) => {
+    const spot = col('#7a4b22');
+    for (const [x, z] of [[-0.41, -0.5], [0.41, 0.2], [-0.41, 0.6], [0.41, -0.3]]) L.box('solid', x - 0.02, top - 0.7, z - 0.18, x + 0.02, top - 0.4, z + 0.18, spot);
+  } },
+  // 2 zebra
+  { color: '#f2f0ea', legH: 0.85, body: [0.6, 0.7, 1.6], neck: [0.7, 0.25], head: [0.26, 0.3, 0.55], extra: (L, top) => {
+    const k = col('#1e1f22');
+    for (let i = 0; i < 5; i++) L.box('solid', -0.31, top - 0.7, -0.7 + i * 0.34, 0.31, top + 0.01, -0.6 + i * 0.34, k);
+  } },
+  // 3 lion
+  { color: '#c8a05a', legH: 0.6, body: [0.6, 0.65, 1.6], head: [0.42, 0.42, 0.45], extra: (L, top) => {
+    L.box('solid', -0.42, top - 0.6, -1.05, 0.42, top + 0.25, -0.75, col('#7a4f24')); // mane
+  } },
+  // 4 bear
+  { color: '#5a3e2b', legH: 0.55, body: [0.95, 0.95, 1.7], head: [0.5, 0.5, 0.5] },
+  // 5 penguin (drawn upright, see drawAnimal)
+  { color: '#1e1f22', legH: 0, body: [0.4, 0.75, 0.35], head: [0.25, 0.25, 0.25] },
+  // 6 flamingo
+  { color: '#f08aa8', legH: 1.0, body: [0.35, 0.35, 0.6], neck: [0.8, 0.07], head: [0.12, 0.12, 0.25] },
+  // 7 antelope
+  { color: '#a6753f', legH: 0.9, body: [0.45, 0.55, 1.2], neck: [0.55, 0.2], head: [0.22, 0.25, 0.4], extra: (L, top) => {
+    for (const s of [-1, 1]) L.beam('solid', [s * 0.08, top + 0.75, -0.95], [s * 0.2, top + 1.25, -0.75], 0.05, col('#3b2a1d'));
+  } },
+  // 8 hippo
+  { color: '#7b6f73', legH: 0.4, body: [1.4, 1.1, 2.7], head: [0.9, 0.7, 0.9] },
+  // 9 rhino
+  { color: '#8c8c88', legH: 0.65, body: [1.1, 1.1, 2.4], head: [0.6, 0.6, 0.8], extra: (L, top) => {
+    L.beam('solid', [0, top - 0.2, -2.0], [0, top + 0.35, -2.15], 0.12, col('#d9d4c7'));
+  } },
+];
+
+function drawAnimal(L: LocalFrame, n: number, r: number): void {
+  const s = BEASTS[n % BEASTS.length];
+  const c = col(s.color);
+  const [bw, bh, bl] = s.body;
+  if (n === 5) {
+    // penguin: upright body, white belly, beak, feet
+    L.box('solid', -bw / 2, 0.05, -bl / 2, bw / 2, bh, bl / 2, c);
+    L.box('solid', -bw / 2 + 0.06, 0.12, -bl / 2 - 0.01, bw / 2 - 0.06, bh - 0.15, -bl / 2 + 0.05, col('#f4f1ea'));
+    L.box('solid', -0.12, bh, -0.12, 0.12, bh + 0.25, 0.12, c);
+    L.box('solid', -0.04, bh + 0.08, -0.24, 0.04, bh + 0.14, -0.12, col('#f39c12'));
+    L.box('solid', -0.15, 0, -0.25, 0.15, 0.05, 0, col('#f39c12'));
+    return;
+  }
+  const y0 = s.legH;
+  const top = y0 + bh;
+  L.box('solid', -bw / 2, y0, -bl / 2, bw / 2, top, bl / 2, c);
+  const lt = Math.max(0.06, bw * 0.22);
+  if (n === 6) {
+    // flamingo: standing on one leg, the other tucked up
+    L.beam('solid', [0, 0, 0], [0, y0, 0], 0.04, c);
+    L.beam('solid', [0, y0 - 0.1, 0.05], [0.05, y0 - 0.45, 0.2], 0.04, c);
+  } else {
+    const lx = bw / 2 - lt / 2;
+    const lz = bl / 2 - lt / 2 - 0.05;
+    const stride = (r - 0.5) * 0.3;
+    for (const [x, z, k] of [[-lx, -lz, 1], [lx, -lz, -1], [-lx, lz, -1], [lx, lz, 1]] as const) L.beam('solid', [x, 0, z + k * stride], [x, y0 + 0.1, z], lt, c);
+  }
+  let hy = top - s.head[1] * 0.3;
+  let hz = -bl / 2 - s.head[2] / 2 + 0.1;
+  if (s.neck) {
+    const [nl, nt] = s.neck;
+    const ny = top + nl * 0.85;
+    const nz = -bl / 2 - nl * 0.35;
+    L.beam('solid', [0, top - 0.15, -bl / 2 + 0.15], [0, ny, nz], nt, c);
+    hy = ny;
+    hz = nz - s.head[2] / 2 + 0.05;
+  }
+  const [hw, hh, hl] = s.head;
+  L.box('solid', -hw / 2, hy - hh / 2, hz - hl / 2, hw / 2, hy + hh / 2, hz + hl / 2, c);
+  if (n === 6) L.box('solid', -0.03, hy - 0.1, hz - hl / 2 - 0.1, 0.03, hy, hz - hl / 2, col('#2b2b2b'));
+  L.beam('solid', [0, top - 0.1, bl / 2], [0, top - 0.6, bl / 2 + 0.25], 0.05, c); // tail
+  s.extra?.(L, top);
 }
