@@ -20,7 +20,7 @@ import { createCityMaterials } from '../render/materials';
 import { ChunkManager, type LotInstance } from '../render/chunks';
 import { AnimationLayer } from '../render/animation';
 import { generateIndustrial, type IndustrialForm } from '../buildings/types/industrial';
-import { CIVIC_FORMS, civicLotSize, generateCivic, pickCivicForm, type CivicForm } from '../buildings/types/civic';
+import { CIVIC_FORMS, STADIUM_DESIGNS, civicLotSize, generateCivic, pickCivicForm, type CivicForm } from '../buildings/types/civic';
 import type { ApartmentStyle, HouseStyle, MidriseStyle, RowStyle, TowerStyle } from '../buildings/styles/palettes';
 import type { DetailOptions, HouseModel } from '../buildings/spec';
 
@@ -157,6 +157,7 @@ const params = {
   retailForm: (url.get('retail') ?? 'mixed') as 'mixed' | RetailForm,
   industrialForm: (url.get('industrial') ?? 'mixed') as 'mixed' | IndustrialForm,
   civicForm: url.get('civic') ?? 'mixed',
+  stadiumDesign: url.get('stadium') ?? 'mixed',
   animate: url.get('animate') !== '0',
   towerDesign: (url.get('design') ?? 'mixed') as 'mixed' | TowerDesign,
   waterTanks: 0.4,
@@ -190,6 +191,7 @@ gui.add(params, 'apartmentForm', ['mixed', 'slab', 'tower', 'lBlock', 'courtyard
 gui.add(params, 'retailForm', ['mixed', 'stripMall', 'bigBox', 'gasStation', 'bazaar', 'carDealer']).name('retail form').onChange(regenerate);
 gui.add(params, 'industrialForm', ['mixed', 'warehouse', 'factory']).name('industrial form').onChange(regenerate);
 gui.add(params, 'civicForm', ['mixed', ...Object.keys(CIVIC_GROUPS), ...CIVIC_FORMS]).name('civic form').onChange(regenerate);
+gui.add(params, 'stadiumDesign', ['mixed', ...STADIUM_DESIGNS]).name('stadium design').onChange(regenerate);
 gui.add(params, 'towerStyle', ['mixed', 'glass', 'stone']).name('tower style').onChange(regenerate);
 gui.add(params, 'towerDesign', ['mixed', 'classic', 'spiral', 'flame', 'stacked', 'rotating', 'yTower']).name('tower design').onChange(regenerate);
 const det = gui.addFolder('Details');
@@ -312,7 +314,7 @@ function generateLot(plan: LotPlan, seed: number, details: DetailOptions): House
   const pick = <T extends string>(v: 'mixed' | T) => (v === 'mixed' ? undefined : v);
   if (plan.kind === 'house') return generateHouse({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.houseStyle), details });
   if (plan.kind === 'row') return generateRowhouses({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.rowStyle), details });
-  if (plan.kind === 'civic') return generateCivic({ seed, lotWidth: plan.w, lotDepth: plan.d, form: plan.civic!, details });
+  if (plan.kind === 'civic') return generateCivic({ seed, lotWidth: plan.w, lotDepth: plan.d, form: plan.civic!, variant: params.stadiumDesign === 'mixed' ? undefined : params.stadiumDesign, details });
   if (plan.kind === 'industrial') return generateIndustrial({ seed, lotWidth: plan.w, lotDepth: plan.d, form: pick(params.industrialForm), details });
   if (plan.kind === 'retail') return generateRetail({ seed, lotWidth: plan.w, lotDepth: plan.d, form: pick(params.retailForm), details });
   if (plan.kind === 'apartment') return generateApartment({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.apartmentStyle), form: pick(params.apartmentForm), details });

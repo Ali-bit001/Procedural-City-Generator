@@ -253,6 +253,7 @@ export type PropKind =
   | 'gateArch'
   | 'statue'
   | 'rock'
+  | 'sightScreen'
   | 'bins'
   | 'bench';
 
@@ -397,6 +398,34 @@ export interface WaterBody {
   y?: number;
 }
 
+/** Stadium seating bowl swept round a superellipse (see bowlMesher). */
+export interface Bowl {
+  cx: number;
+  cz: number;
+  /** Inner (pitch-side) half-axes. */
+  ax: number;
+  az: number;
+  /** Superellipse power: 2 = oval / round, 3-4 = rounded rectangle. */
+  power: number;
+  /** Tiers from the pitch outwards: seating depth and front / back heights. */
+  tiers: { depth: number; y0: number; y1: number }[];
+  roof: 'none' | 'canopy' | 'oculus' | 'dome';
+  /** Canopy over this angle range only (radians). */
+  roofArc?: [number, number];
+  /** Roof height above the top row. */
+  roofRise: number;
+  /** How far the roof reaches past the front row towards the pitch (m). */
+  cover: number;
+  /** Open end (horseshoe): centre angle and angular width. */
+  gap?: { at: number; width: number };
+  seats: [string, string];
+  pattern: 'sections' | 'rows' | 'solid';
+  facade: string;
+  facadeStyle: 'plain' | 'ribs' | 'glass' | 'bands';
+  roofColor: string;
+  accent: string;
+}
+
 /** Round paved area (fountain plaza, path junction, viewing point). */
 export interface Plaza {
   x: number;
@@ -443,6 +472,7 @@ export interface HouseModel {
   walks?: Walkway[];
   water?: WaterBody[];
   plazas?: Plaza[];
+  bowls?: Bowl[];
   fireEscapes?: FireEscape[];
   /** Tower volumes (extruded polygons). */
   polyMasses?: PolyMass[];

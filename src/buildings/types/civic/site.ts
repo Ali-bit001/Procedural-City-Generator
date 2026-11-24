@@ -18,6 +18,7 @@ import type {
   Light,
   Mass,
   MassKind,
+  Bowl,
   Opening,
   ParkingLot,
   Plaza,
@@ -66,6 +67,7 @@ export class Site {
   readonly walks: Walkway[] = [];
   readonly water: WaterBody[] = [];
   readonly plazas: Plaza[] = [];
+  readonly bowls: Bowl[] = [];
   /** Doors (and extra targets) that linkPaths() joins to the path network. */
   readonly entrances: { x: number; z: number; nx: number; nz: number; massId?: number }[] = [];
   /** Extra areas that scattered items must avoid. */
@@ -355,6 +357,7 @@ export class Site {
       walks: this.walks,
       water: this.water,
       plazas: this.plazas,
+      bowls: this.bowls,
       props: this.props,
       lights: this.lights,
       animated: this.animated,

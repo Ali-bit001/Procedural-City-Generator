@@ -293,7 +293,21 @@ Files: `src/buildings/types/civic/` (`site.ts` toolkit, `grounds.ts` landscape t
   - high school: 3-storey U-block around a courtyard, gym hall, running track around a football field with bleachers and floodlights, basketball or tennis court, buses, staff parking
   - university campus: admin hall with a clock tower, quad with cross paths, fountain and benches, lecture halls, library with a portico, dorm slabs, courts, parking, campus bus, stadium-style sports ground
 - **Public:**
-  - stadium: pitch inside four roofed grandstands, floodlight masts, ticket booths, plaza, flags, parking; lit LED advertising boards round the pitch, sponsor banners on the backs of the stands, video scoreboard on an end stand
+  - stadium (`stadium.ts`, parametric seating bowl in `bowlMesher.ts`), eight designs:
+    - classic: four roofed grandstands, corner floodlight masts, scoreboard on an end stand, sponsor banners
+    - bowl: continuous rounded-rectangle bowl, 1–2 tiers with a glazed hospitality band, canopy or open
+    - round: near-circular / oval bowl
+    - horseshoe: open at one end with a scoreboard standing in the gap
+    - oculus: huge roof over every seat with an open centre ringed by lights
+    - domed: fully covered arena with panel bands and a skylight ring
+    - athletics: running track round the pitch, roof over the main side only
+    - cricket: oval outfield, low stands, heritage pavilion with a veranda in the open end, sight screens, six floodlight masts
+    - all designs:
+      - the bowl is a superellipse sized to enclose the pitch or track, then scaled to fit the lot
+      - facades are plain, ribbed, glass or banded, with lit entrances
+      - LED pitch walls and ad boards
+      - a shared entrance plaza with ticket booths, flags and parking
+    - the Lab's "stadium design" picker or `?stadium=` chooses one
   - train station: glazed concourse and wings, taxi rank, platforms with long canopies, tracks, trains, enclosed footbridge
   - bus stand: terminal hall, sheltered island platforms, buses in the bays, rickshaws and taxis
   - parking garage: 3–6 open decks with cars on every level, a two-lane scissor-ramp tower beside the decks (ramps alternate lanes and directions between landings at each end, so they never intersect), stair core, "P" signs
@@ -330,7 +344,7 @@ Files: `src/buildings/types/civic/` (`site.ts` toolkit, `grounds.ts` landscape t
   | zoo | ~36,000 | ~8,000 |
   | hospital | ~16,000 | ~3,600 |
   | high school | ~15,800 | ~2,800 |
-  | stadium | ~17,500 | ~3,900 |
+  | stadium | ~18,000–34,000 | ~3,500–4,500 |
   | train station | ~17,000 | ~3,700 |
   | parking garage | ~17,000 | ~4,700 |
   | university | ~49,000 | ~11,000 |

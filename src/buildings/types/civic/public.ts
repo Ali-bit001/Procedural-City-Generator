@@ -1,7 +1,6 @@
 /**
  * Public buildings:
- *   stadium       -> football pitch ringed by four roofed grandstands, corner floodlight masts,
- *                    entrance plaza with ticket booths, flags and parking
+ *   (stadiums live in stadium.ts)
  *   trainStation  -> station hall (tall glazed concourse + wings) on a taxi forecourt, platforms with
  *                    long canopies, tracks, a train at the platform, an enclosed footbridge
  *   busStand      -> terminal hall, sheltered island platforms with buses in the bays, rickshaws / taxis
@@ -12,76 +11,6 @@
  */
 import { massTop, type WindowStyle } from '../../spec';
 import { CAR_COLORS, Site, jitter } from './site';
-
-export function stadium(s: Site): void {
-  const { rng, W, D } = s;
-  const cx = W / 2;
-  const team = rng.pick(['#1f6fb5', '#c0392b', '#27ae60', '#f1c40f', '#5b2c83', '#e67e22']);
-  const team2 = rng.pick(['#f4f1ea', '#1e1f22', '#c9ccd1']);
-  // Pitch scaled to fit the lot behind a ~26 m entrance plaza.
-  const avail = D - 30 - 4;
-  const k = Math.min(1, (avail - 2 * 18 - 6) / 68, (W - 8 - 2 * 18 - 6) / 105);
-  const pl = 105 * k;
-  const pw = 68 * k;
-  const zc = 30 + avail / 2;
-  s.court('football', { x0: cx - pl / 2, x1: cx + pl / 2, z0: zc - pw / 2, z1: zc + pw / 2 });
-  s.props.push({ kind: 'goalPost', x: cx - pl / 2 + 1, y: 0.08, z: zc, rot: -Math.PI / 2, color: '#f4f1ea' });
-  s.props.push({ kind: 'goalPost', x: cx + pl / 2 - 1, y: 0.08, z: zc, rot: Math.PI / 2, color: '#f4f1ea' });
-
-  // Stands: long sides deeper/taller than the ends.
-  const sd = 18 * Math.max(0.8, k);
-  const ed = 15 * Math.max(0.8, k);
-  const gap = 3;
-  const sh = rng.range(11, 15);
-  const eh = sh * rng.range(0.6, 0.85);
-  const stand = (x: number, z: number, rot: number, w: number, d: number, h: number) => {
-    s.props.push({ kind: 'grandstand', x, y: 0.05, z, rot, color: team, color2: team2, w, d, h });
-    const along = Math.abs(Math.sin(rot)) < 0.5;
-    s.reserved.push(along ? { x0: x - w / 2 - 1, x1: x + w / 2 + 1, z0: z - d / 2 - 1, z1: z + d / 2 + 1 } : { x0: x - d / 2 - 1, x1: x + d / 2 + 1, z0: z - w / 2 - 1, z1: z + w / 2 + 1 });
-  };
-  stand(cx, zc + pw / 2 + gap + sd / 2, 0, pl + 6, sd, sh);
-  stand(cx, zc - pw / 2 - gap - sd / 2, Math.PI, pl + 6, sd, sh);
-  stand(cx - pl / 2 - gap - ed / 2, zc, -Math.PI / 2, pw + 4, ed, eh);
-  stand(cx + pl / 2 + gap + ed / 2, zc, Math.PI / 2, pw + 4, ed, eh);
-  // Pitch-side LED advertising boards on all four sides, a video scoreboard on one end stand.
-  const ab = 1.4;
-  s.props.push({ kind: 'adBoards', x: cx, y: 0.08, z: zc - pw / 2 - ab, rot: Math.PI, color: '#1e1f22', w: pl - 6, h: 0.9 });
-  s.props.push({ kind: 'adBoards', x: cx, y: 0.08, z: zc + pw / 2 + ab, rot: 0, color: '#1e1f22', w: pl - 6, h: 0.9 });
-  s.props.push({ kind: 'adBoards', x: cx - pl / 2 - ab, y: 0.08, z: zc, rot: -Math.PI / 2, color: '#1e1f22', w: pw - 6, h: 0.9 });
-  s.props.push({ kind: 'adBoards', x: cx + pl / 2 + ab, y: 0.08, z: zc, rot: Math.PI / 2, color: '#1e1f22', w: pw - 6, h: 0.9 });
-  const sbSide = rng.chance(0.5) ? -1 : 1;
-  s.props.push({ kind: 'scoreboard', x: cx + sbSide * (pl / 2 + gap + ed * 0.7), y: eh + 7.15, z: zc, rot: sbSide < 0 ? -Math.PI / 2 : Math.PI / 2, color: '#1e1f22', w: Math.min(16, pw * 0.3) });
-  const fx = pl / 2 + gap + ed * 0.7;
-  const fz = pw / 2 + gap + sd * 0.7;
-  const fh = sh + 22;
-  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-    const x = cx + sx * fx;
-    const z = zc + sz * fz;
-    s.props.push({ kind: 'floodlight', x, y: 0.05, z, rot: Math.atan2(-(cx - x), -(zc - z)), color: '#9aa0a6', h: fh });
-  }
-  s.height = fh + 4;
-
-  // Entrance plaza with ticket booths, flags and lamps; parking either side.
-  const plazaZ1 = zc - pw / 2 - gap - sd - 1;
-  s.paths.push({ x0: cx - 34, x1: cx + 34, z0: 0, z1: plazaZ1 });
-  const nb = rng.int(2, 4);
-  for (let i = 0; i < nb; i++) {
-    const bx = cx + (i - (nb - 1) / 2) * 14;
-    const booth = s.mass('unit', { x0: bx - 2, x1: bx + 2, z0: plazaZ1 - 7, z1: plazaZ1 - 4 }, 1, 3, team2 === '#1e1f22' ? '#5a5f66' : '#e9e6df', { color: team });
-    s.opening(booth, 'front', 0.5, 'shopfront', 2.6, 1.6, '#2b3a48', 'shop');
-    s.sign(booth, 'front', 0.5, 2.3, 3, 0.5, team);
-  }
-  s.flags(cx, 4, 6);
-  for (const x of [cx - 30, cx - 15, cx + 15, cx + 30]) s.lights.push({ kind: 'post', x, y: 0.05, z: 10, rot: 0 });
-  for (const x of [cx - 26, cx - 8, cx + 8, cx + 26]) s.props.push({ kind: 'litterBin', x, y: 0.05, z: 13, rot: 0, color: '#3a3d40' });
-  if (cx - 34 - 4 >= 10) {
-    s.parking({ x0: 3, x1: cx - 36, z0: 2, z1: plazaZ1 - 2 });
-    s.parking({ x0: cx + 36, x1: W - 3, z0: 2, z1: plazaZ1 - 2 });
-  }
-  s.props.push({ kind: 'pylonSign', x: cx - 35, y: 0.05, z: 2, rot: 0, color: team, color2: '#3a3d40', h: 9, w: 3.5 });
-  for (const [x, z] of [[3, D - 3], [W - 3, D - 3]]) s.trees_({ x0: x - 3, x1: x + 3, z0: z - 3, z1: z + 3 }, 1);
-  s.trees_({ x0: 0, x1: W, z0: 0, z1: D }, 8);
-}
 
 export function trainStation(s: Site): void {
   const { rng, W, D } = s;

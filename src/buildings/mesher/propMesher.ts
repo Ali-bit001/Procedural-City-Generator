@@ -1179,11 +1179,12 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       // Big video screen on a frame, facing -z (p.w wide).
       const w = p.w ?? 12;
       const sh = w * 0.42;
-      for (const x of [-w * 0.35, w * 0.35]) L.beam('solid', [x, 0, 0.4], [x, 1.2, 0.4], 0.35, STEEL);
-      L.box('solid', -w / 2 - 0.3, 1.2, 0, w / 2 + 0.3, 1.2 + sh + 0.6, 0.8, DARK);
-      L.box('lamp', -w / 2, 1.5, -0.04, w / 2, 1.5 + sh * 0.62, 0, col('#3aa0ff'));
-      L.box('lamp', -w / 2, 1.5 + sh * 0.66, -0.04, -0.02, 1.5 + sh - 0.05, 0, col('#ffcf3a'));
-      L.box('lamp', 0.02, 1.5 + sh * 0.66, -0.04, w / 2, 1.5 + sh - 0.05, 0, col('#ff5a4a'));
+      const lh = p.h ?? 1.2; // leg height (tall when it stands on the ground)
+      for (const x of [-w * 0.35, w * 0.35]) L.beam('solid', [x, 0, 0.4], [x, lh, 0.4], 0.35, STEEL);
+      L.box('solid', -w / 2 - 0.3, lh, 0, w / 2 + 0.3, lh + sh + 0.6, 0.8, DARK);
+      L.box('lamp', -w / 2, lh + 0.3, -0.04, w / 2, lh + 0.3 + sh * 0.62, 0, col('#3aa0ff'));
+      L.box('lamp', -w / 2, lh + 0.3 + sh * 0.66, -0.04, -0.02, lh + 0.3 + sh - 0.05, 0, col('#ffcf3a'));
+      L.box('lamp', 0.02, lh + 0.3 + sh * 0.66, -0.04, w / 2, lh + 0.3 + sh - 0.05, 0, col('#ff5a4a'));
       break;
     }
     case 'footbridge': {
@@ -1248,6 +1249,14 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
           : [[w / 2 - 0.7, h - 1.45, z], [-w / 2 + 0.7, h - 1.45, z], [-w / 2 + 0.7, h - 0.35, z], [w / 2 - 0.7, h - 0.35, z]];
         L.winQuad('window', pts, c1, w - 1.4, 1.1, STYLE_ID.sign, 1.5, [0, 0, s]);
       }
+      break;
+    }
+    case 'sightScreen': {
+      // Cricket sight screen: tall white board on a frame, facing -z (p.w wide, p.h tall).
+      const w = p.w ?? 10;
+      const h = p.h ?? 5;
+      L.box('solid', -w / 2, 0.6, -0.1, w / 2, h, 0.1, col('#f4f1ea'));
+      for (let x = -w / 2 + 0.5; x <= w / 2 - 0.4; x += 2.5) L.beam('solid', [x, 0, 0.9], [x, h * 0.8, 0.12], 0.12, STEEL);
       break;
     }
     case 'statue': {

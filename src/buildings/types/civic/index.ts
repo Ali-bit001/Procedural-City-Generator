@@ -7,7 +7,8 @@ import { DEFAULT_DETAILS, type DetailOptions, type HouseModel } from '../../spec
 import { Site } from './site';
 import { clinic, hospital } from './health';
 import { highSchool, primarySchool, university } from './education';
-import { busStand, fireStation, parkingGarage, policeStation, stadium, trainStation } from './public';
+import { busStand, fireStation, parkingGarage, policeStation, trainStation } from './public';
+import { stadium, type StadiumDesign } from './stadium';
 import { collectionPoint, utility, wasteYard } from './parks';
 import { park, zoo } from './landscape';
 
@@ -29,7 +30,7 @@ export const CIVIC_LOTS: Record<CivicForm, [number, number, number, number]> = {
   primarySchool: [62, 80, 56, 70],
   highSchool: [120, 134, 118, 128],
   university: [192, 210, 190, 200],
-  stadium: [166, 184, 142, 154],
+  stadium: [172, 196, 148, 166],
   trainStation: [130, 160, 72, 88],
   busStand: [50, 70, 44, 56],
   parkingGarage: [40, 58, 40, 54],
@@ -57,11 +58,15 @@ export function civicLotSize(rng: RNG, form: CivicForm): { w: number; d: number 
   return { w: rng.range(w0, w1), d: rng.range(d0, d1) };
 }
 
+export const STADIUM_DESIGNS: StadiumDesign[] = ['classic', 'bowl', 'round', 'horseshoe', 'oculus', 'domed', 'athletics', 'cricket'];
+
 export interface CivicSpec {
   seed: number;
   lotWidth: number;
   lotDepth: number;
   form: CivicForm;
+  /** Form-specific design override (e.g. a stadium design). */
+  variant?: string;
   details?: DetailOptions;
 }
 
@@ -73,6 +78,7 @@ const GENERATORS: Record<CivicForm, (s: Site) => void> = {
 export function generateCivic(spec: CivicSpec): HouseModel {
   const rng = new RNG(spec.seed);
   const site = new Site(rng, spec.lotWidth, spec.lotDepth, spec.details ?? DEFAULT_DETAILS, spec.seed, spec.form);
-  GENERATORS[spec.form](site);
+  if (spec.form === 'stadium') stadium(site, spec.variant as StadiumDesign | undefined);
+  else GENERATORS[spec.form](site);
   return site.model(`civic:${spec.form}`);
 }

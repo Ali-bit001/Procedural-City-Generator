@@ -77,12 +77,19 @@ export function courtMesh(b: MeshBuilder, c: Court, lod: 0 | 1): void {
       return;
     }
     case 'cricket': {
-      base('#4e8f3a');
-      // pitch strip + creases, boundary rope
+      // Oval outfield filling the rect, pitch strip + creases, elliptical boundary rope.
+      const grass = col('#4e8f3a');
+      const segs = lod === 0 ? 48 : 24;
+      const E = (t: number, k: number, y: number) => P(Math.cos(t) * (len / 2) * k, y, Math.sin(t) * (wid / 2) * k);
+      for (let i = 0; i < segs; i++) {
+        const t0 = (i / segs) * Math.PI * 2;
+        const t1 = ((i + 1) / segs) * Math.PI * 2;
+        b.tri('solid', P(0, TOP, 0), E(t0, 1, TOP), E(t1, 1, TOP), grass, UP);
+        if (lod === 0) b.quad('solid', E(t0, 0.9, LINE), E(t1, 0.9, LINE), E(t1, 0.905, LINE), E(t0, 0.905, LINE), paint, UP);
+      }
       rect(-10, -1.5, 10, 1.5, TOP, TOP + 0.004, col('#c9a66b'));
       if (lod === 1) return;
       for (const u of [-8.8, 8.8]) line(u - 0.05, -1.5, u + 0.05, 1.5);
-      arc(0, 0, Math.min(len, wid) / 2 - 1.5, 0, Math.PI * 2, 0.15, paint, LINE, 40);
       return;
     }
     case 'basketball': {
