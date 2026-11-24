@@ -75,7 +75,15 @@ export type WindowStyle =
   /** Ribbed metal cladding (no glass), for industrial sheds. */
   | 'cladding'
   /** Cladding with a glazed strip-window band near the top. */
-  | 'claddingStrip';
+  | 'claddingStrip'
+  /** Round-headed arch: wall-coloured spandrels, trim line, glass. */
+  | 'arch'
+  /** Pointed (gothic / islamic) arch. */
+  | 'pointed'
+  /** Round rose window with radial tracery and coloured glass. */
+  | 'rose'
+  /** Pointed arch filled with leaded stained glass (colours glow at night). */
+  | 'stained';
 
 export interface Opening {
   kind: OpeningKind;
@@ -138,7 +146,7 @@ export interface Fence {
 }
 
 export interface Tree {
-  kind: 'round' | 'cone' | 'shrub';
+  kind: 'round' | 'cone' | 'shrub' | 'palm';
   x: number;
   z: number;
   scale: number;
@@ -254,6 +262,30 @@ export type PropKind =
   | 'statue'
   | 'rock'
   | 'sightScreen'
+  | 'dome'
+  | 'minaret'
+  | 'chhatri'
+  | 'churchSpire'
+  | 'shikhara'
+  | 'gopuram'
+  | 'pagoda'
+  | 'stupa'
+  | 'nishanSahib'
+  | 'tentHall'
+  | 'buttress'
+  | 'gravestone'
+  | 'stoneLantern'
+  | 'finial'
+  | 'prayerCarpet'
+  | 'wuduTaps'
+  | 'shoeRack'
+  | 'strut'
+  | 'archRib'
+  | 'obelisk'
+  | 'hedgeRow'
+  | 'glassPyramid'
+  | 'lounger'
+  | 'parasol'
   | 'bins'
   | 'bench';
 

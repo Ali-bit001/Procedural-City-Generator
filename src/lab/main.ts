@@ -20,6 +20,8 @@ import { createCityMaterials } from '../render/materials';
 import { ChunkManager, type LotInstance } from '../render/chunks';
 import { AnimationLayer } from '../render/animation';
 import { generateIndustrial, type IndustrialForm } from '../buildings/types/industrial';
+import { FAITHS, WORSHIP_STYLES, WORSHIP_STYLE_LIST, generateWorship, pickWorship, worshipLotSize, type WorshipStyle } from '../buildings/types/worship';
+import { HOTEL_STYLES, generateHotel, hotelLotSize, type HotelStyle } from '../buildings/types/hotel';
 import { CIVIC_FORMS, STADIUM_DESIGNS, civicLotSize, generateCivic, pickCivicForm, type CivicForm } from '../buildings/types/civic';
 import type { ApartmentStyle, HouseStyle, MidriseStyle, RowStyle, TowerStyle } from '../buildings/styles/palettes';
 import type { DetailOptions, HouseModel } from '../buildings/spec';
@@ -133,7 +135,7 @@ function applyQuality(q: Quality): void {
 
 // ---------------------------------------------------------------- params / GUI
 
-type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'apartments' | 'retail' | 'industrial' | 'civic' | 'office towers';
+type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'apartments' | 'retail' | 'industrial' | 'civic' | 'places of worship' | 'hotels' | 'office towers';
 const CIVIC_GROUPS: Record<string, CivicForm[]> = {
   health: ['hospital', 'clinic'],
   education: ['primarySchool', 'highSchool', 'university'],
@@ -143,7 +145,10 @@ const CIVIC_GROUPS: Record<string, CivicForm[]> = {
 /** Small civic things that fit between ordinary buildings on a mixed street. */
 const STREET_CIVIC: CivicForm[] = ['clinic', 'primarySchool', 'fireStation', 'policeStation', 'parkingGarage', 'park', 'collectionPoint', 'busStand'];
 const urlSeed = Number(url.get('seed'));
-const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'apartments', 'retail', 'industrial', 'civic', 'office towers'];
+const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'apartments', 'retail', 'industrial', 'civic', 'places of worship', 'hotels', 'office towers'];
+/** Small worship / hotel styles that fit between ordinary buildings on a mixed street. */
+const STREET_WORSHIP: WorshipStyle[] = ['localMosque', 'colonial', 'modernChurch', 'nagara'];
+const STREET_HOTEL: HotelStyle[] = ['business', 'motel'];
 const params = {
   seed: Number.isFinite(urlSeed) && urlSeed > 0 ? urlSeed : 1337,
   type: (TYPES.find((t) => t === url.get('type')) ?? 'mixed street') as BuildingType,
@@ -158,6 +163,8 @@ const params = {
   industrialForm: (url.get('industrial') ?? 'mixed') as 'mixed' | IndustrialForm,
   civicForm: url.get('civic') ?? 'mixed',
   stadiumDesign: url.get('stadium') ?? 'mixed',
+  worshipStyle: url.get('worship') ?? 'mixed',
+  hotelStyle: url.get('hotel') ?? 'mixed',
   animate: url.get('animate') !== '0',
   towerDesign: (url.get('design') ?? 'mixed') as 'mixed' | TowerDesign,
   waterTanks: 0.4,
@@ -192,6 +199,8 @@ gui.add(params, 'retailForm', ['mixed', 'stripMall', 'bigBox', 'gasStation', 'ba
 gui.add(params, 'industrialForm', ['mixed', 'warehouse', 'factory']).name('industrial form').onChange(regenerate);
 gui.add(params, 'civicForm', ['mixed', ...Object.keys(CIVIC_GROUPS), ...CIVIC_FORMS]).name('civic form').onChange(regenerate);
 gui.add(params, 'stadiumDesign', ['mixed', ...STADIUM_DESIGNS]).name('stadium design').onChange(regenerate);
+gui.add(params, 'worshipStyle', ['mixed', ...FAITHS, ...WORSHIP_STYLE_LIST]).name('worship style').onChange(regenerate);
+gui.add(params, 'hotelStyle', ['mixed', ...HOTEL_STYLES]).name('hotel style').onChange(regenerate);
 gui.add(params, 'towerStyle', ['mixed', 'glass', 'stone']).name('tower style').onChange(regenerate);
 gui.add(params, 'towerDesign', ['mixed', 'classic', 'spiral', 'flame', 'stacked', 'rotating', 'yTower']).name('tower design').onChange(regenerate);
 const det = gui.addFolder('Details');
@@ -267,12 +276,21 @@ const labels = new THREE.Group();
 scene.add(labels);
 const groundMat = new THREE.MeshStandardMaterial({ color: '#86a862', roughness: 1 });
 
-type LotKind = 'house' | 'row' | 'midrise' | 'apartment' | 'retail' | 'industrial' | 'civic' | 'tower';
+type LotKind = 'house' | 'row' | 'midrise' | 'apartment' | 'retail' | 'industrial' | 'civic' | 'worship' | 'hotel' | 'tower';
 interface LotPlan {
   kind: LotKind;
   w: number;
   d: number;
   civic?: CivicForm;
+  worship?: WorshipStyle;
+  hotel?: HotelStyle;
+}
+
+function worshipPool(): WorshipStyle[] {
+  const v = params.worshipStyle;
+  if ((FAITHS as string[]).includes(v)) return WORSHIP_STYLE_LIST.filter((st) => WORSHIP_STYLES[st].faith === v);
+  if ((WORSHIP_STYLE_LIST as string[]).includes(v)) return [v as WorshipStyle];
+  return WORSHIP_STYLE_LIST;
 }
 
 function civicPool(): CivicForm[] {
@@ -292,7 +310,17 @@ function planLot(rng: RNG): LotPlan {
               : params.type === 'retail' ? 'retail'
                 : params.type === 'industrial' ? 'industrial'
                   : params.type === 'civic' ? 'civic'
-                    : rng.weighted<LotKind>([['house', 30], ['row', 19], ['midrise', 17], ['apartment', 12], ['retail', 9], ['industrial', 6], ['civic', 6], ['tower', 7]]);
+                    : params.type === 'places of worship' ? 'worship'
+                      : params.type === 'hotels' ? 'hotel'
+                        : rng.weighted<LotKind>([['house', 30], ['row', 19], ['midrise', 17], ['apartment', 12], ['retail', 9], ['industrial', 6], ['civic', 6], ['worship', 3], ['hotel', 3], ['tower', 7]]);
+  if (kind === 'worship') {
+    const style = pickWorship(rng, params.type === 'places of worship' ? worshipPool() : STREET_WORSHIP);
+    return { kind, worship: style, ...worshipLotSize(rng, style) };
+  }
+  if (kind === 'hotel') {
+    const style: HotelStyle = params.type === 'hotels' ? ((HOTEL_STYLES as string[]).includes(params.hotelStyle) ? (params.hotelStyle as HotelStyle) : rng.pick(HOTEL_STYLES)) : rng.pick(STREET_HOTEL);
+    return { kind, hotel: style, ...hotelLotSize(rng, style) };
+  }
   if (kind === 'civic') {
     const form = pickCivicForm(rng, params.type === 'civic' ? civicPool() : STREET_CIVIC);
     return { kind, civic: form, ...civicLotSize(rng, form) };
@@ -314,6 +342,8 @@ function generateLot(plan: LotPlan, seed: number, details: DetailOptions): House
   const pick = <T extends string>(v: 'mixed' | T) => (v === 'mixed' ? undefined : v);
   if (plan.kind === 'house') return generateHouse({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.houseStyle), details });
   if (plan.kind === 'row') return generateRowhouses({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.rowStyle), details });
+  if (plan.kind === 'worship') return generateWorship({ seed, lotWidth: plan.w, lotDepth: plan.d, style: plan.worship!, details });
+  if (plan.kind === 'hotel') return generateHotel({ seed, lotWidth: plan.w, lotDepth: plan.d, style: plan.hotel!, details });
   if (plan.kind === 'civic') return generateCivic({ seed, lotWidth: plan.w, lotDepth: plan.d, form: plan.civic!, variant: params.stadiumDesign === 'mixed' ? undefined : params.stadiumDesign, details });
   if (plan.kind === 'industrial') return generateIndustrial({ seed, lotWidth: plan.w, lotDepth: plan.d, form: pick(params.industrialForm), details });
   if (plan.kind === 'retail') return generateRetail({ seed, lotWidth: plan.w, lotDepth: plan.d, form: pick(params.retailForm), details });

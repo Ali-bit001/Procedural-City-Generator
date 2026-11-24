@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { LocalFrame, MeshBuilder, SHAPES, TEMPLATES, col } from './MeshBuilder';
 import type { Light, Prop } from '../spec';
 import { STYLE_ID } from '../../render/windowMaterial';
+import { drawSacred } from './sacredMesher';
 
 const STEEL = col('#8a8f96');
 const DARK = col('#2a2a2a');
@@ -24,7 +25,20 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
   const c1 = col(p.color);
   const c2 = col(p.color2 ?? p.color);
 
+  if (drawSacred(L, p)) return;
   switch (p.kind) {
+    case 'lounger': {
+      // Pool lounger along local z, backrest at +z.
+      L.box('solid', -0.35, 0.3, -0.9, 0.35, 0.38, 0.6, c1);
+      L.poly('solid', [[-0.35, 0.38, 0.55], [0.35, 0.38, 0.55], [0.35, 0.95, 1.0], [-0.35, 0.95, 1.0]], c1, [0, 1, -1]);
+      for (const [x, z] of [[-0.3, -0.8], [0.3, -0.8], [-0.3, 0.5], [0.3, 0.5]]) L.box('solid', x - 0.03, 0, z - 0.03, x + 0.03, 0.3, z + 0.03, STEEL);
+      break;
+    }
+    case 'parasol': {
+      L.beam('solid', [0, 0, 0], [0, 2.4, 0], 0.05, col('#d9d4c7'));
+      L.shape('solid', SHAPES.cone, 0, 2.45, 0, p.w ?? 1.4, 0.55, p.w ?? 1.4, c1);
+      break;
+    }
     case 'swing': {
       const hgt = 2.2;
       L.beam('solid', [-1.9, hgt, 0], [1.9, hgt, 0], 0.1, c1);
@@ -1416,6 +1430,7 @@ const LAMP = col('#ffe2a8');
  */
 export function drawPropFar(b: MeshBuilder, p: Prop): boolean {
   const L = new LocalFrame(b, p.x, p.y, p.z, p.rot);
+  if (drawSacred(L, p, true)) return true;
   const c1 = col(p.color);
   switch (p.kind) {
     case 'car':

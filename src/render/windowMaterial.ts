@@ -26,6 +26,10 @@ export const STYLE_ID: Record<WindowStyle | 'picket' | 'iron', number> = {
   grid: 12,
   cladding: 13,
   claddingStrip: 14,
+  arch: 15,
+  pointed: 16,
+  rose: 17,
+  stained: 18,
   picket: 20,
   iron: 21,
 };
@@ -45,6 +49,19 @@ float wLines(float x, float period, float halfW) {
 }
 float wBox(vec2 p, vec2 lo, vec2 hi) {
   return step(lo.x, p.x) * step(p.x, hi.x) * step(lo.y, p.y) * step(p.y, hi.y);
+}
+// Inside an arch-headed opening of size s, shrunk by inset. R = s.x / 2 gives a round arch, larger R a pointed one.
+float wArch(vec2 p, vec2 s, float R, float inset) {
+  float h = sqrt(max(R * R - (R - s.x * 0.5) * (R - s.x * 0.5), 0.0));
+  float yb = s.y - h;
+  if (p.y < yb) return step(inset, p.x) * step(p.x, s.x - inset) * step(inset, p.y);
+  return step(length(p - vec2(s.x - R, yb)), R - inset) * step(length(p - vec2(R, yb)), R - inset);
+}
+// Stained-glass colour for a cell.
+vec3 wStained(vec2 cell, float seed) {
+  float h = wHash(cell.x * 13.1 + cell.y * 7.7 + seed * 41.0);
+  vec3 c = h < 0.25 ? vec3(0.75, 0.12, 0.12) : h < 0.5 ? vec3(0.12, 0.25, 0.75) : h < 0.7 ? vec3(0.85, 0.65, 0.12) : h < 0.85 ? vec3(0.15, 0.55, 0.25) : vec3(0.55, 0.2, 0.6);
+  return c;
 }
 
 WinOut winPattern(vec2 p, vec4 win, vec3 base) {
@@ -139,6 +156,47 @@ WinOut winPattern(vec2 p, vec4 win, vec3 base) {
     float band = step(s.y - 2.6, p.y) * step(p.y, s.y - 1.3) * step(0.6, min(p.x, s.x - p.x));
     glass = band * (1.0 - wLines(p.x, 2.0, 0.05));
     office = 1.0;
+  } else if (st < 16.5) {               // round (15) or pointed (16) arch: spandrels stay wall-coloured
+    float R = st < 15.5 ? s.x * 0.5 : s.x * 0.82;
+    float outer = wArch(p, s, R, 0.0);
+    float inner = wArch(p, s, R, 0.1);
+    float h = sqrt(max(R * R - (R - s.x * 0.5) * (R - s.x * 0.5), 0.0));
+    glass = inner * step(0.035, abs(p.x - s.x * 0.5) + step(s.x, 1.3)) * step(0.03, abs(p.y - (s.y - h)) + step(p.y, s.y - h - 0.2));
+    o.color = base * (1.0 - 0.22 * (outer - inner));
+    curtain = 0.0;
+    glassCol = mix(vec3(0.09, 0.13, 0.18), vec3(0.30, 0.38, 0.46), clamp(p.y / s.y, 0.0, 1.0) * 0.55);
+  } else if (st < 18.5) {               // rose window (17) / stained-glass lancet (18)
+    vec3 sg;
+    float lead;
+    float inner;
+    float outer;
+    if (st < 17.5) {
+      vec2 c = s * 0.5;
+      float r = min(s.x, s.y) * 0.5;
+      vec2 d = p - c;
+      float rr = length(d);
+      float ang = atan(d.y, d.x);
+      outer = step(rr, r);
+      inner = step(rr, r - 0.12);
+      float spoke = step(abs(fract(ang / 6.2831853 * 12.0 + 0.5) - 0.5) * rr * 0.52, 0.05);
+      lead = max(spoke * step(r * 0.25, rr), step(abs(rr - r * 0.25), 0.05) + step(abs(rr - r * 0.62), 0.04));
+      sg = wStained(vec2(floor(ang * 1.91), floor(rr / (r * 0.3))), seed);
+    } else {
+      float R = s.x * 0.82;
+      outer = wArch(p, s, R, 0.0);
+      inner = wArch(p, s, R, 0.1);
+      vec2 cell = floor(p / vec2(0.32, 0.4));
+      vec2 f = fract(p / vec2(0.32, 0.4));
+      lead = step(min(min(f.x, 1.0 - f.x) * 0.32, min(f.y, 1.0 - f.y) * 0.4), 0.025) + step(abs(p.x - s.x * 0.5), 0.04);
+      sg = wStained(cell, seed);
+    }
+    lead = clamp(lead, 0.0, 1.0);
+    o.color = base * (1.0 - 0.22 * (outer - inner));
+    float g = inner * (1.0 - lead);
+    o.color = mix(o.color, mix(sg * 0.55, vec3(0.12), lead * inner), inner);
+    o.rough = mix(o.rough, 0.15, g);
+    o.emissive = sg * g * uNight * 1.1;
+    return o;
   } else if (st < 20.5) {               // picket fence (cut-out)
     float picket = step(fract(p.x / 0.26) * 0.26, 0.09) * step(p.y, s.y - 0.06 * step(0.045, abs(fract(p.x / 0.26) * 0.26 - 0.045)));
     float rails = wBox(p, vec2(0.0, 0.33), vec2(s.x, 0.41)) + step(0.95, s.y) * wBox(p, vec2(0.0, s.y - 0.33), vec2(s.x, s.y - 0.25));

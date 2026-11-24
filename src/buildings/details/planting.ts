@@ -8,6 +8,7 @@ const radiusOf = (t: Pick<Tree, 'kind' | 'scale'>) => (t.kind === 'shrub' ? 0.7 
 
 export function treeColor(rng: RNG, kind: Tree['kind']): string {
   if (kind === 'cone') return jitterHex(rng.pick(CONIFER_GREENS), rng, 0.06);
+  if (kind === 'palm') return jitterHex(rng.pick(TREE_GREENS), rng, 0.05);
   return rng.chance(0.1) ? rng.pick(AUTUMN) : jitterHex(rng.pick(TREE_GREENS), rng, 0.06);
 }
 

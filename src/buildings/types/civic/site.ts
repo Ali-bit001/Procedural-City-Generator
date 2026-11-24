@@ -22,6 +22,7 @@ import type {
   Opening,
   ParkingLot,
   Plaza,
+  PolyMass,
   Porch,
   Prop,
   Rect,
@@ -68,6 +69,7 @@ export class Site {
   readonly water: WaterBody[] = [];
   readonly plazas: Plaza[] = [];
   readonly bowls: Bowl[] = [];
+  readonly polyMasses: PolyMass[] = [];
   /** Doors (and extra targets) that linkPaths() joins to the path network. */
   readonly entrances: { x: number; z: number; nx: number; nz: number; massId?: number }[] = [];
   /** Extra areas that scattered items must avoid. */
@@ -204,6 +206,7 @@ export class Site {
       ...this.porches.map((p) => p.rect),
       ...this.reserved,
       ...(this.pool ? [this.pool] : []),
+      ...this.water.map((w) => ({ x0: Math.min(...w.pts.map((p) => p[0])) - 1, x1: Math.max(...w.pts.map((p) => p[0])) + 1, z0: Math.min(...w.pts.map((p) => p[1])) - 1, z1: Math.max(...w.pts.map((p) => p[1])) + 1 })),
     ]);
   }
 
@@ -358,6 +361,7 @@ export class Site {
       water: this.water,
       plazas: this.plazas,
       bowls: this.bowls,
+      polyMasses: this.polyMasses,
       props: this.props,
       lights: this.lights,
       animated: this.animated,

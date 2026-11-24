@@ -683,6 +683,26 @@ function treeMesh(b: MeshBuilder, t: Tree, lod: Lod): void {
       const dark = leaf.clone().multiplyScalar(0.85);
       place(b, TEMPLATES.blob, t.x + Math.cos(t.rot) * 0.8 * s, th + 2.0 * s, t.z + Math.sin(t.rot) * 0.8 * s, 1.1 * s, 1.0 * s, 1.1 * s, t.rot * 2, dark);
     }
+  } else if (t.kind === 'palm') {
+    // Leaning segmented trunk, a crown of drooping fronds.
+    const L = new LocalFrame(b, t.x, 0, t.z, t.rot);
+    const lean = 0.5 * s;
+    const top: [number, number, number] = [lean, 6.5 * s, 0];
+    L.beam('solid', [0, 0, 0], [lean * 0.4, 3.4 * s, 0], 0.32 * s, trunk);
+    L.beam('solid', [lean * 0.4, 3.3 * s, 0], top, 0.26 * s, trunk);
+    const n = lod === 0 ? 8 : 5;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + t.rot;
+      const cx = Math.cos(a);
+      const cz = Math.sin(a);
+      const mid: [number, number, number] = [top[0] + cx * 1.5 * s, top[1] + 0.5 * s, cz * 1.5 * s];
+      const tip: [number, number, number] = [top[0] + cx * 3.0 * s, top[1] - 1.1 * s, cz * 3.0 * s];
+      const w = 0.45 * s;
+      for (const [p0, p1] of [[top, mid], [mid, tip]] as const) {
+        L.poly('solid', [[p0[0] - cz * w, p0[1], p0[2] + cx * w], [p1[0] - cz * w, p1[1], p1[2] + cx * w], [p1[0] + cz * w, p1[1], p1[2] - cx * w], [p0[0] + cz * w, p0[1], p0[2] - cx * w]], leaf, [0, 1, 0]);
+        L.poly('solid', [[p0[0] - cz * w, p0[1] - 0.02, p0[2] + cx * w], [p1[0] - cz * w, p1[1] - 0.02, p1[2] + cx * w], [p1[0] + cz * w, p1[1] - 0.02, p1[2] - cx * w], [p0[0] + cz * w, p0[1] - 0.02, p0[2] - cx * w]], leaf.clone().multiplyScalar(0.8), [0, -1, 0]);
+      }
+    }
   } else {
     b.box('solid', t.x - 0.12 * s, 0, t.z - 0.12 * s, t.x + 0.12 * s, 1.2 * s, t.z + 0.12 * s, trunk, FACE.PY);
     place(b, TEMPLATES.cone, t.x, 1.0 * s + 1.4 * s, t.z, 1.6 * s, 2.8 * s, 1.6 * s, t.rot, leaf);

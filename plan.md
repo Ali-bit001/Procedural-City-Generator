@@ -94,15 +94,15 @@ src/
 | **B0** | Building Lab setup: Vite + Three.js, OrbitControls, GUI (seed, count, style, sun), hover info, click to focus, seed in URL, WASD / Q-E movement, ground panning, zoom to cursor, street view | ✅ Done |
 | **B1** | Massing core: polygon extrusion, insets, setbacks, taper, twist, podium + tower, courtyard | 🟨 Convex polygon towers: setbacks, taper, twist |
 | **B2** | Floors and facade grammar, window shader (UV cells, frames, glass), special ground floor | ✅ Done (window shader) |
-| **B3** | Roofs: flat + parapet, gable, hip, sawtooth, tower crowns, rooftop clutter | ⬜ (gable/hip/shed/flat done for houses) |
+| **B3** | Roofs: flat + parapet, gable, hip, sawtooth, tower crowns, rooftop clutter | ✅ Gable / hip / shed / flat, sawtooth (industrial), tower crowns + rooftop equipment, domes / spires / shikharas (worship) |
 | **B4** | Modern core types: office tower, supertall, mid-rise mixed-use, apartment block (the skyline) | 🟨 Mid-rise, office tower, apartments done |
-| **B5** | Low-rise types: **row house ✅**, **suburban house ✅**, shop, warehouse, factory | 🟨 In progress |
+| **B5** | Low-rise types: **row house ✅**, **suburban house ✅**, shop, warehouse, factory | ✅ Done (shops in retail, warehouse + factory in industrial) |
 | **B6** | Style system: palettes, realistic/stylized switch, material variation, night mode with lit windows | ⬜ |
 | **B7** | Details and LOD: balconies, awnings, signs, fire escapes, LOD0/1/2, merging, instancing | 🟨 Chunks + 2 LODs done |
 | **B8** | Stress test: 30×30 grid of random buildings at 60 fps, set the performance budget | ⬜ |
 | **B9** | Civic: hospital, clinic, primary / high school, university campus, stadium, train station, bus stand, parking garage, fire station, police station | ✅ Done |
-| **B9a** | Places of worship: mosque (domes, minarets, courtyard, ablution area), church (nave, bell tower / spire, stained glass), Hindu temple (shikhara, mandapa), gurdwara (white domes, sarovar pool) | ⬜ |
-| **B9b** | Hotels: business tower, resort slab with pool deck, budget roadside motel; porte-cochère drop-off, lit name sign, flags | ⬜ |
+| **B9a** | Places of worship: mosque (domes, minarets, courtyard, ablution area), church (nave, bell tower / spire, stained glass), Hindu temple (shikhara, mandapa), gurdwara (white domes, sarovar pool) | ✅ Done: 13 architectures incl. Buddhist |
+| **B9b** | Hotels: business tower, resort slab with pool deck, budget roadside motel; porte-cochère drop-off, lit name sign, flags | ✅ Done |
 | **B9c** | Street & public extras (small structures, placed by the city layer): parks (paths, lawns, trees, ponds, playgrounds, gazebos, fountains), plazas, bus stands / shelters, metro entrances, taxi / rickshaw stands, kiosks & newsstands, public toilets, phone / EV charging points, garbage collection points and municipal dumps (skips, compactor trucks, landfill mounds), recycling centres, electrical substations, water towers, telecom towers, police / fire posts, petrol pumps along highways, traffic police booths, roadside chai stalls / dhabas, billboards, graveyards | 🟨 Parks, bus stands, garbage points, waste yard, substations, water towers done |
 | **B9d** | Industrial: warehouses / logistics, factories (smokestacks, tanks, silos, pipe racks, conveyors, gantry cranes) with animated smoke, fans, cranes and conveyors | ✅ Done |
 | **B10** | City integration (after roads and blocks exist): lots feed `BuildingSpec`s into the same generators | ⬜ |
@@ -249,7 +249,6 @@ Life      -> split ACs, satellite dishes, laundry on balconies, rooftop tanks / 
   - Placement never collides: shafts are masses, so windows behind them are never placed and balconies avoid them; pipes and fire escapes are blockers that ACs and dishes stay out of.
 - **Cost:** ~9,500 triangles near / ~4,400 far for a whole block (dozens of flats).
 
-## Next
 ## Done: Retail
 
 File: `src/buildings/types/retail.ts`.
@@ -349,5 +348,67 @@ Files: `src/buildings/types/civic/` (`site.ts` toolkit, `grounds.ts` landscape t
   | parking garage | ~17,000 | ~4,700 |
   | university | ~49,000 | ~11,000 |
 
+## Done: Places of worship
+
+File: `src/buildings/types/worship.ts`; architectural pieces in `src/buildings/mesher/sacredMesher.ts` (surfaces of revolution).
+
+- **New facade styles:** round arch, pointed arch, rose window and stained glass. Spandrels take the wall colour, and stained glass glows in colour at night.
+- **Pieces:**
+  - domes: hemisphere, onion, Mughal bulb, fluted gold lotus, lead dome on a windowed drum with a lantern, saucer
+  - minarets: Mughal octagonal with balconies and a chhatri, Ottoman pencil, modern needle, neighbourhood with loudspeakers
+  - chhatris; church spires (Gothic with pinnacles, pyramid, belfry cupola, onion)
+  - nagara shikhara with clustered towers, amalaka and kalash; Dravidian vimana; painted gopuram
+  - pagoda, stupa with prayer flags, Nishan Sahib, tent roof
+  - buttresses, gravestones, stone lanterns; finials (crescent, cross, Orthodox cross, kalash)
+- **Mosque:**
+  - Mughal: red-sandstone compound, arcaded cloisters, ablution pool, gateway, pishtaq, three marble domes, four minarets
+  - Ottoman: cascading lead domes, domed portico, şadırvan, pencil minarets, small graveyard
+  - modern: folded tent hall with needle minarets and reflecting pools, or a cube with a saucer dome
+  - neighbourhood: small dome, loudspeaker minaret, water tank, wall
+- **Church:**
+  - Gothic: nave with aisles and transept, buttresses, stained glass, rose windows; a west spire or twin towers; churchyard
+  - colonial: round arches, pyramid or belfry tower
+  - modern: A-frame with a free-standing bell tower
+  - Orthodox: cross plan with onion domes
+- **Hindu temple:**
+  - nagara: platform, porch, pyramid-roofed hall, shikhara, saffron flag, corner shrine, flower stalls
+  - Dravidian: walled compound, gopuram, vimana, hall, temple tank with a pavilion, flag mast, palms
+- **Gurdwara:** white Darbar Sahib with a gold lotus dome and corner chhatris, either in the middle of the sarovar on a causeway or beside it; Nishan Sahib, langar hall, gateway.
+- **Buddhist:**
+  - pagoda temple: gate, hall, 3–7 tier pagoda, cherry blossom, lanterns, pond and bridge
+  - stupa: terraces, prayer flags, ring of chortens, monastery
+- **Far LOD:** the pieces switch to fewer segments and drop small details; tiny pieces are skipped.
+- **Mosque life:**
+  - rows of prayer carpets facing the qibla in the courtyards (Mughal, Ottoman), on the forecourt (modern, neighbourhood)
+  - wudu taps along the pool / round the şadırvan, and shoe racks
+  - the gurdwara has carpet runners along the parikrama round the sarovar
+- **Cost** (near / far): ~0.6k–11k / ~0.4k–6.4k triangles. The Mughal mosque is the heaviest.
+- **Lab:** the "places of worship" type with a style picker (or `?worship=` a faith or a style). The neighbourhood mosque, colonial and modern churches and the nagara temple also appear on mixed streets.
+
+## Done: Hotels
+
+File: `src/buildings/types/hotel.ts`.
+
+- **Business:** glazed podium with a porte-cochère over a drop-off loop and taxis, guest tower (14–28 floors) with a lit name sign and sometimes a glass sky bar, flags.
+- **Resort:** lobby with a porte-cochère, long slab with a balcony to every room facing a lagoon pool deck (loungers, parasols, pool bar, palms), tennis court.
+- **Motel:** two storeys of rooms (door + window each) facing the car park, upper walkway with railings and end stairs, office with a red VACANCY sign, tall roadside sign, fenced pool, ice and vending machines.
+- **Landmark designs** (inspired by famous hotel shapes, not copies):
+  - sail: a sail-shaped tower tapering to a point, white ribbed facade, exoskeleton legs and braces, cantilevered helipad, spire; reached by a causeway between lagoons with fountain jets
+  - sky park: three towers on a podium joined by a sky deck that cantilevers past the last one, with an infinity pool, loungers, parasols and a planted edge
+  - arch twin: coral towers with stepped, domed crowns, a bridge suite high between them over a giant gold arch, fountain plaza
+  - pyramid: a dark glass pyramid (curtain-wall bands on the sloped faces) with an obelisk and a palm drive
+  - cylinders: one to three round glass towers, the tallest with a revolving-restaurant crown and antenna
+  - terraced: a ziggurat resort stepping back on both sides, with planted terrace edges and a lagoon deck
+- **New props / trees:** lounger, parasol, palm tree, strut, arch rib, obelisk, hedge row, glass pyramid; civic sites can now use polygon (round / tapering) towers.
+- **Lab:** the "hotels" type with a style picker (or `?hotel=`); business hotels and motels also appear on mixed streets.
+
 ## Next
-Waiting on feedback, then places of worship and hotels.
+- Building types still open:
+  - supertall landmark
+  - small street extras: metro entrances, kiosks, billboards, graveyards as their own lots, telecom towers, chai stalls
+- Then the building systems:
+  - B1: concave and irregular footprints, for the angled lots that real blocks produce
+  - B6: realistic style switch
+  - B7: third LOD
+  - B8: stress test
+- Then the city itself: terrain and zoning → roads → blocks and lots → placing buildings → traffic and pedestrians.
