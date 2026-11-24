@@ -7,6 +7,7 @@ import { LocalFrame, MeshBuilder, SHAPES, TEMPLATES, col } from './MeshBuilder';
 import type { Light, Prop } from '../spec';
 import { STYLE_ID } from '../../render/windowMaterial';
 import { drawSacred } from './sacredMesher';
+import { drawCar, drawCarFar } from './vehicleMesher';
 
 const STEEL = col('#8a8f96');
 const DARK = col('#2a2a2a');
@@ -1374,29 +1375,9 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       L.beam('solid', [0, 0.05, -0.45], [0, 0.3, -0.85], 0.025, STEEL);
       break;
     }
-    case 'car': {
-      const body = c1;
-      const glass = col('#1c2733');
-      L.box('solid', -0.88, 0.3, -2.15, 0.88, 0.95, 2.15, body);
-      L.box('solid', -0.86, 0.3, -2.25, 0.86, 0.65, -2.1, DARK); // bumpers
-      L.box('solid', -0.86, 0.3, 2.1, 0.86, 0.65, 2.25, DARK);
-      // cabin: glass box with a painted roof
-      L.box('glass', -0.78, 0.95, -0.9, 0.78, 1.45, 1.2, glass);
-      L.box('solid', -0.8, 1.45, -0.75, 0.8, 1.52, 1.1, body);
-      for (const [wx, wz] of [[-0.85, -1.35], [0.85, -1.35], [-0.85, 1.35], [0.85, 1.35]]) {
-        L.shape('solid', SHAPES.cylLow, wx, 0.33, wz, 0.33, 0.24, 0.33, DARK, X);
-      }
-      L.box('lamp', -0.8, 0.7, -2.16, -0.5, 0.82, -2.14, col('#f4f1e0'));
-      L.box('lamp', 0.5, 0.7, -2.16, 0.8, 0.82, -2.14, col('#f4f1e0'));
-      L.box('solid', -0.8, 0.7, 2.14, -0.5, 0.82, 2.16, col('#a01818'));
-      L.box('solid', 0.5, 0.7, 2.14, 0.8, 0.82, 2.16, col('#a01818'));
-      if (p.h) {
-        // police light bar
-        L.box('lamp', -0.55, 1.52, -0.15, -0.02, 1.64, 0.15, col('#ff2a1a'));
-        L.box('lamp', 0.02, 1.52, -0.15, 0.55, 1.64, 0.15, col('#2a6bff'));
-      }
+    case 'car':
+      drawCar(L, p);
       break;
-    }
     case 'mailbox': {
       L.beam('solid', [0, 0, 0], [0, 1.0, 0], 0.08, WOOD);
       L.box('solid', -0.13, 1.0, -0.25, 0.13, 1.2, 0.25, c1);
@@ -1434,9 +1415,7 @@ export function drawPropFar(b: MeshBuilder, p: Prop): boolean {
   const c1 = col(p.color);
   switch (p.kind) {
     case 'car':
-      // body + cabin (~24 triangles instead of ~200)
-      L.box('solid', -0.88, 0.15, -2.2, 0.88, 0.95, 2.2, c1);
-      L.box('glass', -0.78, 0.95, -0.9, 0.78, 1.5, 1.2, col('#1c2733'));
+      drawCarFar(L, p);
       return true;
     case 'dumpster':
       L.box('solid', -0.95, 0.12, -0.6, 0.95, 1.35, 0.6, c1);

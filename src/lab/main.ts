@@ -19,6 +19,7 @@ import { MeshBuilder, col } from '../buildings/mesher/MeshBuilder';
 import { createCityMaterials } from '../render/materials';
 import { ChunkManager, type LotInstance } from '../render/chunks';
 import { AnimationLayer } from '../render/animation';
+import { HelicopterFleet } from '../render/helicopters';
 import { generateIndustrial, type IndustrialForm } from '../buildings/types/industrial';
 import { FAITHS, WORSHIP_STYLES, WORSHIP_STYLE_LIST, generateWorship, pickWorship, worshipLotSize, type WorshipStyle } from '../buildings/types/worship';
 import { HOTEL_STYLES, generateHotel, hotelLotSize, type HotelStyle } from '../buildings/types/hotel';
@@ -96,6 +97,9 @@ scene.add(chunks.root);
 // Smoke, fans, cranes, conveyors: GPU-animated, one draw call per kind.
 const anim = new AnimationLayer();
 scene.add(anim.root);
+// Helicopters hopping between the helipads (CPU-updated, a handful of meshes).
+const helis = new HelicopterFleet();
+scene.add(helis.root);
 
 // Bloom only matters at night (bright lamps / lit windows / signs).
 const composer = new EffectComposer(renderer);
@@ -166,6 +170,7 @@ const params = {
   worshipStyle: url.get('worship') ?? 'mixed',
   hotelStyle: url.get('hotel') ?? 'mixed',
   animate: url.get('animate') !== '0',
+  followHeli: url.get('follow') === '1',
   towerDesign: (url.get('design') ?? 'mixed') as 'mixed' | TowerDesign,
   waterTanks: 0.4,
   props: 1,
@@ -210,6 +215,7 @@ det.add(params, 'cars', 0, 1, 0.05).name('parked cars').onFinishChange(regenerat
 const view = gui.addFolder('View');
 view.add(params, 'night').name('🌙 night').onChange(applyTimeOfDay);
 view.add(params, 'animate').name('▶ animations').onChange(() => requestRender());
+view.add(params, 'followHeli').name('🚁 follow helicopter').onChange(() => requestRender());
 view.add(params, 'quality', ['low', 'balanced', 'high']).name('quality').onChange(applyQuality);
 view.add(params, 'lodDistance', 40, 600, 10).name('detail distance').onChange((v: number) => {
   chunks.lodDistance = v;
@@ -392,6 +398,8 @@ function regenerate(): void {
   chunks.update(camera.position);
   skyline = Math.max(...lots.map((l) => l.bounds!.max.y));
   anim.build(lots.flatMap((l) => (l.model.animated ?? []).map((spec) => ({ spec, matrix: l.matrix }))));
+  const pads = lots.flatMap((l) => l.model.props.filter((p) => p.kind === 'helipad').map((p) => new THREE.Vector3(p.x, p.y + 0.22, p.z).applyMatrix4(l.matrix)));
+  helis.build(pads, skyline, params.seed);
   // Tall skylines need the haze pushed back or distant towers wash out.
   const fog = scene.fog as THREE.Fog;
   fog.near = 260 + skyline * 1.5;
@@ -607,8 +615,18 @@ renderer.setAnimationLoop(() => {
   }
   if (applyKeys(dt)) moving = true;
   // Animated parts: advance time; when only they change, redraw at most 30 times a second.
-  if (params.animate && anim.count > 0) {
+  if (params.animate && anim.count + helis.count > 0) {
     anim.update(dt);
+    helis.update(dt);
+    // Chase camera: sit behind and above the first helicopter, looking past it.
+    const pose = params.followHeli ? helis.pose(0) : undefined;
+    if (pose) {
+      const back = new THREE.Vector3(Math.sin(pose.yaw), 0, Math.cos(pose.yaw));
+      const want = pose.pos.clone().addScaledVector(back, 26).add(new THREE.Vector3(0, 9, 0));
+      camera.position.lerp(want, Math.min(1, dt * 2));
+      controls.target.lerp(pose.pos.clone().addScaledVector(back, -10), Math.min(1, dt * 3));
+      needsRender = true;
+    }
     animAccum += dt;
     if (animAccum >= 1 / 30) {
       animAccum = 0;
@@ -630,7 +648,7 @@ renderer.setAnimationLoop(() => {
   fpsTime += dt;
   if (fpsTime >= 1) {
     const s = chunks.stats();
-    const fps = (frames ? `${Math.round(frames / fpsTime)} fps` : 'idle (0 fps)') + (params.animate && anim.count ? ` · ${anim.count} animated` : '');
+    const fps = (frames ? `${Math.round(frames / fpsTime)} fps` : 'idle (0 fps)') + (params.animate && anim.count + helis.count ? ` · ${anim.count} animated` + (helis.count ? ` · ${helis.count} helicopters` : '') : '');
     statsEl.innerHTML = `${buildInfo}<br>${fps} · ${lastCalls} draw calls · ${(lastTris / 1000).toFixed(0)}k tris drawn · ${s.near}/${s.chunks} chunks near`;
     frames = 0;
     fpsTime = 0;

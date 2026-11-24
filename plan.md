@@ -402,6 +402,25 @@ File: `src/buildings/types/hotel.ts`.
 - **New props / trees:** lounger, parasol, palm tree, strut, arch rib, obelisk, hedge row, glass pyramid; civic sites can now use polygon (round / tapering) towers.
 - **Lab:** the "hotels" type with a style picker (or `?hotel=`); business hotels and motels also appear on mixed streets.
 
+## Done: Vehicles and flying traffic
+
+Files: `src/buildings/mesher/vehicleMesher.ts` (car types), `src/render/helicopters.ts` (fleet). Every parked car used to be the same model. Now there's variety on the ground and a little life in the air.
+
+- **Vehicle types:**
+  - sedan, hatchback, SUV, jeep (boxy, spare wheel on the back), pickup (open bed), EV (smooth nose with a light bar and a glass roof), minicar, van / minivan, sports coupe
+  - auto-rickshaw, used explicitly by rickshaw stands
+  - every car picks a type from its position (weighted towards sedans, hatchbacks and SUVs), so existing car parks, streets and garages vary without changing the generators
+  - police cars keep their light bar
+  - each type has its own far-view stand-in (~24 triangles)
+- **Flying helicopters:**
+  - 2–3 helicopters with body, tail boom, tail rotor, skids and a spinning main rotor
+  - they fly between the scene's helipads (hospital roofs, tower crowns, the sail hotel) as a state machine: idle on the pad with the rotor spinning up → vertical lift-off → turn towards a random other pad → climb above the skyline → cruise with a nose-down pitch → descend → land → idle
+  - with a single helipad they fly loops round the city and come back; with no helipad there are none
+  - a few instances updated on the CPU each frame, inside the existing animation layer (30 fps cap, View → animations toggle)
+  - View → "🚁 follow helicopter" (or `?follow=1`) gives a chase camera behind one of them
+  - tested over 15 simulated minutes per scene: every landing is exactly on a pad, cruising always happens above the skyline, and all pads get visited
+- **Later, with the road network:** moving cars, buses and rickshaws on the roads; pedestrians.
+
 ## Next
 - Building types still open:
   - supertall landmark

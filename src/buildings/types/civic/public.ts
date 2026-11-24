@@ -121,7 +121,11 @@ export function busStand(s: Site): void {
     iz += 13;
   }
   // Rickshaws / taxis waiting by the entrance, a ticket kiosk, bins.
-  for (let i = 0; i < rng.int(2, 5); i++) s.props.push({ kind: rng.chance(0.5) ? 'motorbike' : 'car', x: 4 + i * 2.8, y: 0.05, z: hz0 - 6, rot: 0, color: rng.pick(['#f2c94c', '#2e6b4a', '#1e1f22', ...CAR_COLORS]) });
+  for (let i = 0; i < rng.int(2, 5); i++) {
+    const r = rng.next();
+    if (r < 0.5) s.props.push({ kind: 'car', x: 4 + i * 2.8, y: 0.05, z: hz0 - 6, rot: 0, color: rng.pick(['#f2c94c', '#1e1f22', '#2e6b4a']), n: 8 }); // auto-rickshaw
+    else s.props.push({ kind: r < 0.75 ? 'motorbike' : 'car', x: 4 + i * 2.8, y: 0.05, z: hz0 - 6, rot: 0, color: rng.pick(['#f2c94c', ...CAR_COLORS]) });
+  }
   s.props.push({ kind: 'pylonSign', x: W - 4, y: 0.05, z: 1.5, rot: 0, color: brand, color2: '#3a3d40', h: 7, w: 2.6 });
   for (const x of [W * 0.25, W * 0.75]) s.props.push({ kind: 'litterBin', x, y: 0.05, z: hz0 - 3.6, rot: 0, color: '#3a3d40' });
   s.props.push({ kind: 'dumpster', x: 3, y: 0.05, z: D - 2.5, rot: 0, color: '#2e6b4a' });
