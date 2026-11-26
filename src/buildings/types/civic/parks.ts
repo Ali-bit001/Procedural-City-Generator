@@ -110,7 +110,7 @@ export function utility(s: Site): void {
     const tcx = (x0 + W) / 2;
     const tcz = D * 0.55;
     const h = rng.range(22, 32);
-    s.props.push({ kind: 'waterTowerTall', x: tcx, y: 0.05, z: tcz, rot: 0, color: rng.pick(['#e9e6df', '#b5c4c9', '#9fb0bf']), color2: rng.pick(['#8f959c', '#5a6b7d']), h, w: Math.min(6, (W - x0) / 3) });
+    s.props.push({ kind: 'waterTowerTall', x: tcx, y: 0.05, z: tcz, rot: 0, color: rng.pick(['#e9e6df', '#b5c4c9', '#9fb0bf']), color2: rng.pick(['#8f959c', '#5a6b7d', '#bdb7aa']), h, w: Math.min(6, (W - x0) / 3), n: rng.int(0, 5) });
     s.reserved.push({ x0: tcx - 6.5, x1: tcx + 6.5, z0: tcz - 6.5, z1: tcz + 6.5 });
     const pump = s.mass('unit', { x0: tcx - 4, x1: tcx + 4, z0: tcz - 14, z1: tcz - 9 }, 1, 3.2, jitter('#d9cfbd', rng, 0.04), { color: '#6b6e72' });
     s.windows(pump, { bay: 3, w: 1.2, h: 1, sill: 1.4, style: 'plain', frame: '#3a3d40', litChance: 0.4 });

@@ -17,7 +17,7 @@ type P3 = [number, number, number];
 let FAR = false;
 
 /** Surface of revolution through profile points [radius, y]; `flute` ripples the radius around. */
-function lathe(L: LocalFrame, profIn: [number, number][], segsIn: number, c: THREE.Color, o: P3 = [0, 0, 0], rot0 = 0, fluteIn = 0): void {
+export function lathe(L: LocalFrame, profIn: [number, number][], segsIn: number, c: THREE.Color, o: P3 = [0, 0, 0], rot0 = 0, fluteIn = 0): void {
   const segs = FAR && segsIn > 4 ? Math.max(6, Math.round(segsIn / 2)) : segsIn;
   const flute = FAR ? 0 : fluteIn;
   const prof = FAR && profIn.length > 4 ? profIn.filter((_, i) => i % 2 === 0 || i === profIn.length - 1) : profIn;

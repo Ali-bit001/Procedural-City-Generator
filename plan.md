@@ -421,6 +421,42 @@ Files: `src/buildings/mesher/vehicleMesher.ts` (car types), `src/render/helicopt
   - tested over 15 simulated minutes per scene: every landing is exactly on a pad, cruising always happens above the skyline, and all pads get visited
 - **Later, with the road network:** moving cars, buses and rickshaws on the roads; pedestrians.
 
+## Done: Vehicle details, water towers, power stations and farms
+
+Files: `src/buildings/mesher/vehicleMesher.ts` (doors), `src/buildings/mesher/utilityMesher.ts` (water towers, power and farm kit), `src/buildings/types/power.ts`, `src/buildings/types/farm.ts`; crop fields in `courtMesher.ts`. Lab: "power stations" and "farms" building types with style pickers (`?power=`, `?farm=`).
+
+- **Vehicle details:**
+  - door seams and handles on every car type: 4-door, 2-door, the van's sliding door, the pickup cab
+  - cab doors and handles on trucks, garbage trucks, fire trucks (plus locker shutters), ambulances (plus rear doors) and buses (folding glass doors)
+  - drawn only up close, so they cost nothing far away
+- **Water towers (variants of one prop):**
+  - pedestal: column and drum (the existing one)
+  - classic legged: four to six braced steel legs, a drum with a conical roof, a ladder and a walkway
+  - spheroid: a "golf ball" sphere on a slender stem
+  - concrete overhead reservoir: a South Asian concrete drum on columns with ring beams
+  - fluted chalice: a concrete stem flaring into a wide bowl
+  - lattice hyperboloid: a criss-cross steel lattice tower with a tank on top
+  - used by utility sites, farms and waterworks
+- **Power stations (new "power" building type):**
+  - nuclear: hyperboloid cooling towers with big animated steam plumes, reactor containment domes, turbine hall, switchyard with transformers and pylons, security fence
+  - coal: boiler house, tall chimneys with smoke, coal stockpiles fed by conveyors, a rail siding with coal wagons, smaller cooling towers, switchyard
+  - gas (combined cycle): turbine halls, heat-recovery boilers with slender stacks, fan cooling banks, fuel tanks
+  - solar farm: rows of tilted panel tables, inverter cabins, substation
+  - wind farm: wind turbines with spinning rotors, control building, substation
+- **Farms (new "farms" building type):**
+  - fields of striped crop rows: wheat, maize, ploughed furrows, rice paddies, sugarcane
+  - crop farm: farmhouse, red barn, silos, tractor, combine harvester, round and square hay bales, centre-pivot irrigation, windpump
+  - dairy: cow sheds, cows, feed silos, milking parlour, hay barn, paddocks
+  - orchard: rows of fruit trees, packing shed
+  - greenhouse farm: rows of glass greenhouses and a packing shed
+  - South Asian village farm (dera): mud-brick courtyard house, buffaloes, charpai beds, tubewell with a small pool, conical haystacks, tractor-trolley, wheat / sugarcane / rice fields
+  - new animals: cow, buffalo, sheep, goat, chicken
+- **Testing and cost:**
+  - every power station and farm type passed the headless test (no clashes, animals or vehicles inside buildings, or props off the lot), and each was checked in a screenshot
+  - cooling-tower steam uses longer-lived, faster-rising particles so the plumes billow tens of metres
+  - cost: nuclear and coal ~32–36k near / ~4k far, gas ~20k / ~3.6k, solar ~23k / ~0.8k, wind ~5k / ~1k; farms ~7–23k near / ~1–9k far (the orchard's trees are the heaviest)
+- **Fix found along the way:** the dark coping on flat parapet roofs was drawn as one lid over the whole roof, so every flat roof showed up grey up close. It now caps only the parapet ring, and roofs show their real colour.
+
 ## Next
 - Building types still open:
   - supertall landmark

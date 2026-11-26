@@ -272,12 +272,13 @@ export class AnimationLayer {
       switch (s.kind) {
         case 'smoke': {
           const n = Math.max(8, Math.round(s.amount * 1.4)); // dense enough to read as a continuous plume
-          const life = s.steam ? 3.5 : 9;
+          const big = s.radius > 4; // cooling-tower plumes billow much higher than vents
+          const life = s.steam ? (big ? 10 : 3.5) : 9;
           const tint = s.steam ? [0.95, 0.95, 0.95, 0.42] : [0.42, 0.42, 0.43, 0.55];
           for (let i = 0; i < n; i++) {
             smoke.push({
               origin: pos.clone().add(new THREE.Vector3((rand() - 0.5) * s.radius, 0, (rand() - 0.5) * s.radius)),
-              params: [i / n + rand() * 0.02, life * (0.85 + rand() * 0.3), s.radius * (s.steam ? 1.6 : 1.7), s.steam ? 2.2 : 2.6],
+              params: [i / n + rand() * 0.02, life * (0.85 + rand() * 0.3), s.radius * (s.steam ? 1.6 : 1.7), s.steam ? (big ? 4.5 : 2.2) : 2.6],
               tint,
             });
           }

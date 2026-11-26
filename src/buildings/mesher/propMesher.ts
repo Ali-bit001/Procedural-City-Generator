@@ -7,7 +7,8 @@ import { LocalFrame, MeshBuilder, SHAPES, TEMPLATES, col } from './MeshBuilder';
 import type { Light, Prop } from '../spec';
 import { STYLE_ID } from '../../render/windowMaterial';
 import { drawSacred } from './sacredMesher';
-import { drawCar, drawCarFar } from './vehicleMesher';
+import { drawUtility } from './utilityMesher';
+import { doorMarks, drawCar, drawCarFar } from './vehicleMesher';
 
 const STEEL = col('#8a8f96');
 const DARK = col('#2a2a2a');
@@ -27,6 +28,7 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
   const c2 = col(p.color2 ?? p.color);
 
   if (drawSacred(L, p)) return;
+  if (drawUtility(L, p)) return;
   switch (p.kind) {
     case 'lounger': {
       // Pool lounger along local z, backrest at +z.
@@ -396,6 +398,7 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       L.box('solid', -1.3, 1.0, 0.2, 1.3, 4.0, len, c2); // trailer
       L.box('solid', -1.2, 0.4, -2.3, 1.2, 0.9, len - 0.2, DARK); // chassis
       for (const z of [-1.6, len - 3.0, len - 1.6]) for (const x of [-1.05, 1.05]) L.shape('solid', SHAPES.cylLow, x, 0.5, z, 0.5, 0.35, 0.5, DARK, X);
+      doorMarks(L, 1.25, [-2.0, -0.6], [-0.8], 0.9, 2.9, 1.85);
       break;
     }
     case 'stall': {
@@ -894,6 +897,12 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       L.box('solid', -1.07, 1.2, -2.6, 1.07, 1.5, 3.0, col('#c0392b'));
       L.box('lamp', -0.6, 2.9, -0.9, -0.05, 3.1, -0.6, col('#ff2a1a'));
       L.box('lamp', 0.05, 2.9, -0.9, 0.6, 3.1, -0.6, col('#2a6bff'));
+      doorMarks(L, 1.0, [-2.15, -1.05], [-1.25], 0.7, 2.05, 1.65);
+      L.box('solid', 1.05, 0.7, 0.2, 1.065, 2.6, 0.22, col('#26282c')); // side door
+      L.box('solid', 1.05, 0.7, 1.3, 1.065, 2.6, 1.32, col('#26282c'));
+      L.box('solid', 1.06, 1.6, 1.05, 1.08, 1.66, 1.25, col('#c9ccd1'));
+      L.box('solid', -0.012, 0.6, 3.0, 0.012, 2.8, 3.012, col('#26282c')); // rear doors
+      for (const x of [-0.18, 0.18]) L.box('solid', x - 0.1, 1.55, 3.0, x + 0.1, 1.6, 3.03, col('#c9ccd1'));
       for (const z of [-1.8, 2.2]) for (const x of [-0.95, 0.95]) L.shape('solid', SHAPES.cylLow, x, 0.4, z, 0.4, 0.3, 0.4, DARK, X);
       break;
     }
@@ -906,6 +915,12 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       for (const x of [-0.6, 0.6]) L.beam('solid', [x, 3.0, -2.0], [x, 3.0, 4.4], 0.12, STEEL); // ladder rails
       for (let z = -1.8; z < 4.4; z += 0.5) L.beam('solid', [-0.6, 3.0, z], [0.6, 3.0, z], 0.05, STEEL);
       L.box('lamp', -0.8, 3.2, -4.3, 0.8, 3.35, -4.0, col('#ff2a1a'));
+      doorMarks(L, 1.25, [-4.1, -3.2, -2.3], [-3.35, -2.45], 0.9, 3.05, 1.95);
+      for (const sx of [-1, 1]) for (let z = -1.8; z < 4.0; z += 1.5) {
+        const x = sx * 1.262;
+        L.box('solid', x - 0.01, 1.7, z, x + 0.01, 2.65, z + 1.3, col('#c9ccd1')); // locker shutter
+        for (let y = 1.8; y < 2.6; y += 0.16) L.box('solid', x - 0.015, y, z + 0.02, x + 0.015, y + 0.02, z + 1.28, col('#9aa0a6'));
+      }
       for (const z of [-3.4, 2.0, 3.4]) for (const x of [-1.1, 1.1]) L.shape('solid', SHAPES.cylLow, x, 0.5, z, 0.5, 0.35, 0.5, DARK, X);
       break;
     }
@@ -916,6 +931,10 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       L.box('glass', -1.27, 1.6, -len / 2 + 0.4, 1.27, 2.6, len / 2 - 0.6, col('#1c2733'));
       L.box('glass', -1.15, 1.2, -len / 2 - 0.02, 1.15, 2.7, -len / 2 + 0.1, col('#1c2733'));
       L.box('lamp', -0.9, 2.75, -len / 2 - 0.03, 0.9, 2.95, -len / 2, col('#ffcf6b')); // destination board
+      for (const z0 of [-len / 2 + 0.5, -0.6]) {
+        L.box('glass', 1.25, 0.45, z0, 1.275, 2.75, z0 + 1.2, col('#2b3a48'));
+        for (const z of [z0, z0 + 0.6, z0 + 1.2]) L.box('solid', 1.268, 0.45, z - 0.025, 1.282, 2.75, z + 0.025, col('#3a3d40'));
+      }
       for (const z of [-len / 2 + 2, len / 2 - 2.5]) for (const x of [-1.1, 1.1]) L.shape('solid', SHAPES.cylLow, x, 0.5, z, 0.5, 0.3, 0.5, DARK, X);
       break;
     }
@@ -924,6 +943,7 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       L.box('glass', -1.1, 1.9, -4.25, 1.1, 2.8, -4.1, col('#1c2733'));
       L.box('solid', -1.25, 0.8, -2.1, 1.25, 3.4, 3.4, c1);
       L.box('solid', -1.15, 0.6, 3.4, 1.15, 3.0, 4.6, col('#5a5f66')); // rear hopper
+      doorMarks(L, 1.2, [-3.8, -2.5], [-2.7], 0.9, 2.85, 1.8);
       for (const z of [-3.2, 2.0, 3.2]) for (const x of [-1.05, 1.05]) L.shape('solid', SHAPES.cylLow, x, 0.5, z, 0.5, 0.35, 0.5, DARK, X);
       break;
     }
@@ -1029,9 +1049,9 @@ export function drawProp(b: MeshBuilder, p: Prop): void {
       for (let k = 0; k < 5; k++) {
         const a = h01(p.x + k, p.z) * Math.PI * 2;
         const d = k === 0 ? 0 : r * 0.45 * h01(k, p.x);
-        b.geometry('solid', TEMPLATES.blob, new THREE.Matrix4().compose(L.p(Math.cos(a) * d, 0, Math.sin(a) * d), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), a), new THREE.Vector3(r * (k === 0 ? 1 : 0.55), h * (k === 0 ? 1 : 0.7), r * (k === 0 ? 0.85 : 0.5))), col(k % 2 ? '#6b5d4f' : '#7d7366'));
+        b.geometry('solid', TEMPLATES.blob, new THREE.Matrix4().compose(L.p(Math.cos(a) * d, 0, Math.sin(a) * d), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), a), new THREE.Vector3(r * (k === 0 ? 1 : 0.55), h * (k === 0 ? 1 : 0.7), r * (k === 0 ? 0.85 : 0.5))), (p.n === 1 ? c1.clone().multiplyScalar(k % 2 ? 0.85 : 1) : col(k % 2 ? '#6b5d4f' : '#7d7366')));
       }
-      for (let k = 0; k < 8; k++) {
+      for (let k = 0; k < (p.n === 1 ? 0 : 8); k++) {
         const a = h01(k, p.z) * Math.PI * 2;
         const d = r * 0.6 * h01(p.x, k);
         const debris = ['#c0392b', '#1f6fb5', '#f4f1ea', '#27ae60', '#f39c12'][k % 5];
@@ -1412,6 +1432,7 @@ const LAMP = col('#ffe2a8');
 export function drawPropFar(b: MeshBuilder, p: Prop): boolean {
   const L = new LocalFrame(b, p.x, p.y, p.z, p.rot);
   if (drawSacred(L, p, true)) return true;
+  if (drawUtility(L, p, true)) return true;
   const c1 = col(p.color);
   switch (p.kind) {
     case 'car':
@@ -1605,6 +1626,33 @@ const BEASTS: Beast[] = [
   // 9 rhino
   { color: '#8c8c88', legH: 0.65, body: [1.1, 1.1, 2.4], head: [0.6, 0.6, 0.8], extra: (L, top) => {
     L.beam('solid', [0, top - 0.2, -2.0], [0, top + 0.35, -2.15], 0.12, col('#d9d4c7'));
+  } },
+  // 10 cow (black and white)
+  { color: '#f2efe8', legH: 0.75, body: [0.7, 0.8, 1.9], head: [0.36, 0.42, 0.55], extra: (L, top) => {
+    const k = col('#1e1f22');
+    for (const [x, z, w] of [[-0.36, -0.3, 0.4], [0.36, 0.35, 0.5], [-0.36, 0.6, 0.3]]) L.box('solid', x - 0.02, top - 0.6, z - w / 2, x + 0.02, top - 0.15, z + w / 2, k);
+    L.box('solid', -0.25, top - 0.1, -0.5, 0.25, top + 0.01, 0.0, k);
+    for (const s of [-1, 1]) L.beam('solid', [s * 0.15, top - 0.05, -1.17], [s * 0.3, top + 0.12, -1.2], 0.04, col('#e9e1cf'));
+    L.box('solid', -0.12, 0.62, 0.45, 0.12, 0.78, 0.7, col('#e8a7a7'));
+  } },
+  // 11 water buffalo
+  { color: '#2b2b2b', legH: 0.65, body: [0.85, 0.9, 2.0], head: [0.42, 0.42, 0.6], extra: (L, top) => {
+    for (const s of [-1, 1]) { L.beam('solid', [s * 0.18, top - 0.1, -1.2], [s * 0.55, top - 0.05, -1.0], 0.07, col('#4a4540')); L.beam('solid', [s * 0.55, top - 0.05, -1.0], [s * 0.5, top - 0.25, -0.75], 0.06, col('#4a4540')); }
+  } },
+  // 12 sheep
+  { color: '#e9e4d6', legH: 0.4, body: [0.55, 0.55, 0.9], head: [0.22, 0.26, 0.32], extra: (L, top) => {
+    L.box('solid', -0.11, top - 0.42, -0.78, 0.11, top - 0.1, -0.55, col('#2b2b2b'));
+    L.box('solid', -0.3, top - 0.05, -0.4, 0.3, top + 0.08, 0.4, col('#f2eee4'));
+  } },
+  // 13 goat
+  { color: '#c9b18a', legH: 0.5, body: [0.4, 0.45, 0.9], neck: [0.35, 0.14], head: [0.18, 0.22, 0.32], extra: (L, top) => {
+    for (const s of [-1, 1]) L.beam('solid', [s * 0.05, top + 0.42, -0.62], [s * 0.1, top + 0.62, -0.45], 0.035, col('#5a4632'));
+    L.beam('solid', [0, top + 0.12, -0.78], [0, top - 0.02, -0.8], 0.05, col('#5a4632'));
+  } },
+  // 14 chicken
+  { color: '#f2efe8', legH: 0.15, body: [0.2, 0.22, 0.3], head: [0.1, 0.12, 0.12], extra: (L, top) => {
+    L.box('solid', -0.015, top + 0.04, -0.25, 0.015, top + 0.12, -0.15, col('#c0392b'));
+    L.box('solid', -0.02, top - 0.12, -0.3, 0.02, top - 0.08, -0.25, col('#f39c12'));
   } },
 ];
 

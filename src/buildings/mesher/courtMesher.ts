@@ -156,6 +156,48 @@ export function courtMesh(b: MeshBuilder, c: Court, lod: 0 | 1): void {
       }
       return;
     }
+    case 'field': {
+      // Crop field: base colour + rows along the long side (raised ridges for tall crops).
+      const crop = c.crop ?? 'wheat';
+      const look: Record<string, [string, string, number, number]> = {
+        // base, row colour, row spacing (m), ridge height (m; 0 = flat stripe)
+        wheat: ['#c9a94a', '#b8973d', 0.9, 0],
+        stubble: ['#d1bd7a', '#b9a464', 0.8, 0],
+        maize: ['#6f8a3a', '#4f7a2a', 1.4, 1.1],
+        ploughed: ['#7a5a3e', '#5e4430', 0.9, 0.08],
+        paddy: ['#5f8f4a', '#7fb35a', 0.6, 0],
+        sugarcane: ['#5a7f34', '#3f6a2a', 1.6, 2.1],
+        pasture: ['#7aa34e', '#86ad58', 3, 0],
+        vegetables: ['#6b5340', '#4f8a3a', 1.2, 0.35],
+      };
+      const [baseC, rowC, sp, ridge] = look[crop] ?? look.wheat;
+      base(baseC);
+      if (crop === 'paddy') {
+        // flooded basins between bunds
+        const nb = Math.max(1, Math.round(len / 14));
+        for (let i = 0; i < nb; i++) {
+          const u0 = -len / 2 + (i * len) / nb + 0.6;
+          const u1 = -len / 2 + ((i + 1) * len) / nb - 0.6;
+          const a = P(u0, TOP + 0.004, -wid / 2 + 0.6);
+          const z = P(u1, TOP + 0.006, wid / 2 - 0.6);
+          b.box('water', Math.min(a.x, z.x), a.y, Math.min(a.z, z.z), Math.max(a.x, z.x), z.y, Math.max(a.z, z.z), col('#6a9a8a'));
+        }
+      }
+      if (lod === 1) return;
+      const rc = col(rowC);
+      const n = Math.floor(wid / sp);
+      for (let i = 0; i < n; i++) {
+        const v = -wid / 2 + (i + 0.5) * sp;
+        if (ridge > 0) {
+          rect(-len / 2 + 0.6, v - sp * 0.28, len / 2 - 0.6, v + sp * 0.28, TOP, TOP + ridge, rc);
+        } else if (crop === 'paddy') {
+          rect(-len / 2 + 0.6, v - 0.12, len / 2 - 0.6, v + 0.12, TOP + 0.006, TOP + 0.12, rc); // seedlings
+        } else {
+          rect(-len / 2, v - sp * 0.22, len / 2, v + sp * 0.22, TOP, TOP + 0.004, rc);
+        }
+      }
+      return;
+    }
     case 'playground': {
       base(alongX ? '#c0573e' : '#4f8a5a');
       return;

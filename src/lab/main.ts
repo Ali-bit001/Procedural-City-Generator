@@ -23,6 +23,8 @@ import { HelicopterFleet } from '../render/helicopters';
 import { generateIndustrial, type IndustrialForm } from '../buildings/types/industrial';
 import { FAITHS, WORSHIP_STYLES, WORSHIP_STYLE_LIST, generateWorship, pickWorship, worshipLotSize, type WorshipStyle } from '../buildings/types/worship';
 import { HOTEL_STYLES, generateHotel, hotelLotSize, type HotelStyle } from '../buildings/types/hotel';
+import { POWER_STYLES, generatePower, powerLotSize, type PowerStyle } from '../buildings/types/power';
+import { FARM_STYLES, generateFarm, farmLotSize, type FarmStyle } from '../buildings/types/farm';
 import { CIVIC_FORMS, STADIUM_DESIGNS, civicLotSize, generateCivic, pickCivicForm, type CivicForm } from '../buildings/types/civic';
 import type { ApartmentStyle, HouseStyle, MidriseStyle, RowStyle, TowerStyle } from '../buildings/styles/palettes';
 import type { DetailOptions, HouseModel } from '../buildings/spec';
@@ -139,7 +141,7 @@ function applyQuality(q: Quality): void {
 
 // ---------------------------------------------------------------- params / GUI
 
-type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'apartments' | 'retail' | 'industrial' | 'civic' | 'places of worship' | 'hotels' | 'office towers';
+type BuildingType = 'mixed street' | 'suburban houses' | 'row houses' | 'mid-rise' | 'apartments' | 'retail' | 'industrial' | 'civic' | 'places of worship' | 'hotels' | 'power stations' | 'farms' | 'office towers';
 const CIVIC_GROUPS: Record<string, CivicForm[]> = {
   health: ['hospital', 'clinic'],
   education: ['primarySchool', 'highSchool', 'university'],
@@ -149,7 +151,7 @@ const CIVIC_GROUPS: Record<string, CivicForm[]> = {
 /** Small civic things that fit between ordinary buildings on a mixed street. */
 const STREET_CIVIC: CivicForm[] = ['clinic', 'primarySchool', 'fireStation', 'policeStation', 'parkingGarage', 'park', 'collectionPoint', 'busStand'];
 const urlSeed = Number(url.get('seed'));
-const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'apartments', 'retail', 'industrial', 'civic', 'places of worship', 'hotels', 'office towers'];
+const TYPES: BuildingType[] = ['mixed street', 'suburban houses', 'row houses', 'mid-rise', 'apartments', 'retail', 'industrial', 'civic', 'places of worship', 'hotels', 'power stations', 'farms', 'office towers'];
 /** Small worship / hotel styles that fit between ordinary buildings on a mixed street. */
 const STREET_WORSHIP: WorshipStyle[] = ['localMosque', 'colonial', 'modernChurch', 'nagara'];
 const STREET_HOTEL: HotelStyle[] = ['business', 'motel'];
@@ -169,6 +171,8 @@ const params = {
   stadiumDesign: url.get('stadium') ?? 'mixed',
   worshipStyle: url.get('worship') ?? 'mixed',
   hotelStyle: url.get('hotel') ?? 'mixed',
+  powerStyle: url.get('power') ?? 'mixed',
+  farmStyle: url.get('farm') ?? 'mixed',
   animate: url.get('animate') !== '0',
   followHeli: url.get('follow') === '1',
   towerDesign: (url.get('design') ?? 'mixed') as 'mixed' | TowerDesign,
@@ -206,6 +210,8 @@ gui.add(params, 'civicForm', ['mixed', ...Object.keys(CIVIC_GROUPS), ...CIVIC_FO
 gui.add(params, 'stadiumDesign', ['mixed', ...STADIUM_DESIGNS]).name('stadium design').onChange(regenerate);
 gui.add(params, 'worshipStyle', ['mixed', ...FAITHS, ...WORSHIP_STYLE_LIST]).name('worship style').onChange(regenerate);
 gui.add(params, 'hotelStyle', ['mixed', ...HOTEL_STYLES]).name('hotel style').onChange(regenerate);
+gui.add(params, 'powerStyle', ['mixed', ...POWER_STYLES]).name('power station').onChange(regenerate);
+gui.add(params, 'farmStyle', ['mixed', ...FARM_STYLES]).name('farm style').onChange(regenerate);
 gui.add(params, 'towerStyle', ['mixed', 'glass', 'stone']).name('tower style').onChange(regenerate);
 gui.add(params, 'towerDesign', ['mixed', 'classic', 'spiral', 'flame', 'stacked', 'rotating', 'yTower']).name('tower design').onChange(regenerate);
 const det = gui.addFolder('Details');
@@ -282,7 +288,7 @@ const labels = new THREE.Group();
 scene.add(labels);
 const groundMat = new THREE.MeshStandardMaterial({ color: '#86a862', roughness: 1 });
 
-type LotKind = 'house' | 'row' | 'midrise' | 'apartment' | 'retail' | 'industrial' | 'civic' | 'worship' | 'hotel' | 'tower';
+type LotKind = 'house' | 'row' | 'midrise' | 'apartment' | 'retail' | 'industrial' | 'civic' | 'worship' | 'hotel' | 'power' | 'farm' | 'tower';
 interface LotPlan {
   kind: LotKind;
   w: number;
@@ -290,6 +296,8 @@ interface LotPlan {
   civic?: CivicForm;
   worship?: WorshipStyle;
   hotel?: HotelStyle;
+  power?: PowerStyle;
+  farm?: FarmStyle;
 }
 
 function worshipPool(): WorshipStyle[] {
@@ -318,10 +326,20 @@ function planLot(rng: RNG): LotPlan {
                   : params.type === 'civic' ? 'civic'
                     : params.type === 'places of worship' ? 'worship'
                       : params.type === 'hotels' ? 'hotel'
+                        : params.type === 'power stations' ? 'power'
+                          : params.type === 'farms' ? 'farm'
                         : rng.weighted<LotKind>([['house', 30], ['row', 19], ['midrise', 17], ['apartment', 12], ['retail', 9], ['industrial', 6], ['civic', 6], ['worship', 3], ['hotel', 3], ['tower', 7]]);
   if (kind === 'worship') {
     const style = pickWorship(rng, params.type === 'places of worship' ? worshipPool() : STREET_WORSHIP);
     return { kind, worship: style, ...worshipLotSize(rng, style) };
+  }
+  if (kind === 'power') {
+    const style: PowerStyle = (POWER_STYLES as string[]).includes(params.powerStyle) ? (params.powerStyle as PowerStyle) : rng.pick(POWER_STYLES);
+    return { kind, power: style, ...powerLotSize(rng, style) };
+  }
+  if (kind === 'farm') {
+    const style: FarmStyle = (FARM_STYLES as string[]).includes(params.farmStyle) ? (params.farmStyle as FarmStyle) : rng.pick(FARM_STYLES);
+    return { kind, farm: style, ...farmLotSize(rng, style) };
   }
   if (kind === 'hotel') {
     const style: HotelStyle = params.type === 'hotels' ? ((HOTEL_STYLES as string[]).includes(params.hotelStyle) ? (params.hotelStyle as HotelStyle) : rng.pick(HOTEL_STYLES)) : rng.pick(STREET_HOTEL);
@@ -349,6 +367,8 @@ function generateLot(plan: LotPlan, seed: number, details: DetailOptions): House
   if (plan.kind === 'house') return generateHouse({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.houseStyle), details });
   if (plan.kind === 'row') return generateRowhouses({ seed, lotWidth: plan.w, lotDepth: plan.d, style: pick(params.rowStyle), details });
   if (plan.kind === 'worship') return generateWorship({ seed, lotWidth: plan.w, lotDepth: plan.d, style: plan.worship!, details });
+  if (plan.kind === 'power') return generatePower({ seed, lotWidth: plan.w, lotDepth: plan.d, style: plan.power!, details });
+  if (plan.kind === 'farm') return generateFarm({ seed, lotWidth: plan.w, lotDepth: plan.d, style: plan.farm!, details });
   if (plan.kind === 'hotel') return generateHotel({ seed, lotWidth: plan.w, lotDepth: plan.d, style: plan.hotel!, details });
   if (plan.kind === 'civic') return generateCivic({ seed, lotWidth: plan.w, lotDepth: plan.d, form: plan.civic!, variant: params.stadiumDesign === 'mixed' ? undefined : params.stadiumDesign, details });
   if (plan.kind === 'industrial') return generateIndustrial({ seed, lotWidth: plan.w, lotDepth: plan.d, form: pick(params.industrialForm), details });

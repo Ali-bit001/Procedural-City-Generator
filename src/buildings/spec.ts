@@ -284,6 +284,18 @@ export type PropKind =
   | 'obelisk'
   | 'hedgeRow'
   | 'glassPyramid'
+  | 'hyperTower'
+  | 'reactorDome'
+  | 'hopperWagons'
+  | 'solarTable'
+  | 'tractor'
+  | 'harvester'
+  | 'hayBale'
+  | 'pivotIrrigation'
+  | 'windpump'
+  | 'greenhouse'
+  | 'openShed'
+  | 'charpai'
   | 'lounger'
   | 'parasol'
   | 'bins'
@@ -411,8 +423,10 @@ export type AnimSpec =
 
 /** Sports surface with its line markings (drawn flat on the ground). */
 export interface Court {
-  kind: 'football' | 'basketball' | 'tennis' | 'track' | 'cricket' | 'playground';
+  kind: 'football' | 'basketball' | 'tennis' | 'track' | 'cricket' | 'playground' | 'field';
   rect: Rect;
+  /** Crop for kind 'field'. Rows run along the long side. */
+  crop?: 'wheat' | 'stubble' | 'maize' | 'ploughed' | 'paddy' | 'sugarcane' | 'pasture' | 'vegetables';
 }
 
 /** Free-form footpath: a polyline of (x, z) points with a width (curving park / campus walks). */

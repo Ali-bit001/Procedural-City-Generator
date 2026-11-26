@@ -45,7 +45,7 @@ export interface LotMeshOptions {
 /** Props that still matter for the silhouette at a distance. */
 const FAR_PROPS: ReadonlySet<PropKind> = new Set<PropKind>([
   'waterTank', 'waterTower', 'solarPanels', 'helipad', 'spire', 'cellTower', 'antennaCluster', 'bigDish', 'coolingTower', 'bmu', 'roofSign', 'pylonSign', 'fuelCanopy', 'truck', 'smokestack', 'storageTank', 'silo', 'pipeRack', 'conveyor', 'container', 'craneRails', 'turbineTower', 'carWashBay',
-  'grandstand', 'floodlight', 'train', 'parkingDeck', 'garageRamp', 'statue', 'scoreboard', 'sightScreen', 'footbridge', 'aviary', 'gateArch', 'adBoards', 'ramp', 'gazebo', 'fountain', 'mound', 'waterTowerTall', 'clockTower', 'skip', 'pond', 'platformCanopy',
+  'grandstand', 'floodlight', 'train', 'parkingDeck', 'garageRamp', 'statue', 'scoreboard', 'sightScreen', 'hyperTower', 'reactorDome', 'footbridge', 'aviary', 'gateArch', 'adBoards', 'ramp', 'gazebo', 'fountain', 'mound', 'waterTowerTall', 'clockTower', 'skip', 'pond', 'platformCanopy',
 ]);
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -228,7 +228,15 @@ function roofMesh(b: MeshBuilder, m: Mass, trimHex: string, lod: Lod): void {
         b.box('solid', r.x0, top, r.z1 - t, r.x1, h, r.z1, wallC, FACE.NY);
         b.box('solid', r.x0, top, r.z0 + t, r.x0 + t, h, r.z1 - t, wallC, FACE.NY | FACE.NZ | FACE.PZ);
         b.box('solid', r.x1 - t, top, r.z0 + t, r.x1, h, r.z1 - t, wallC, FACE.NY | FACE.NZ | FACE.PZ);
-        if (lod === 0) b.box('solid', r.x0 - 0.03, h, r.z0 - 0.03, r.x1 + 0.03, h + 0.05, r.z1 + 0.03, col('#55585c'));
+        if (lod === 0) {
+          // Coping cap along the parapet ring only (not a lid over the whole roof).
+          const cp = col('#55585c');
+          const ct = t + 0.03;
+          b.box('solid', r.x0 - 0.03, h, r.z0 - 0.03, r.x1 + 0.03, h + 0.05, r.z0 - 0.03 + ct, cp);
+          b.box('solid', r.x0 - 0.03, h, r.z1 + 0.03 - ct, r.x1 + 0.03, h + 0.05, r.z1 + 0.03, cp);
+          b.box('solid', r.x0 - 0.03, h, r.z0 - 0.03 + ct, r.x0 - 0.03 + ct, h + 0.05, r.z1 + 0.03 - ct, cp);
+          b.box('solid', r.x1 + 0.03 - ct, h, r.z0 - 0.03 + ct, r.x1 + 0.03, h + 0.05, r.z1 + 0.03 - ct, cp);
+        }
       } else {
         b.box('solid', r.x0 - oh, top, r.z0 - oh, r.x1 + oh, top + 0.3, r.z1 + oh, roofC, oh < 0.01 ? FACE.NY : 0);
       }

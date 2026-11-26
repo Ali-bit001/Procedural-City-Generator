@@ -54,6 +54,21 @@ const FAR: Record<number, [number, number, number, number, number, number, numbe
   9: [0.92, -2.2, 2.2, 0.68, -0.3, 1.0, 1.08],
 };
 
+const SEAM = col('#26282c');
+const CHROME = col('#c9ccd1');
+
+/**
+ * Door seams (vertical shut lines at the given z) and handles (at hz, height hy) on both sides of a body
+ * of half-width hw, between heights y0..y1. Used by cars, vans, trucks, buses and ambulances.
+ */
+export function doorMarks(L: LocalFrame, hw: number, seams: number[], handles: number[], y0: number, y1: number, hy: number, handle: THREE.Color = CHROME): void {
+  for (const sx of [-1, 1]) {
+    const x = sx * (hw + 0.006);
+    for (const z of seams) L.box('solid', x - 0.006, y0, z - 0.012, x + 0.006, y1, z + 0.012, SEAM);
+    for (const z of handles) L.box('solid', x + sx * 0.012 - 0.014, hy - 0.028, z - 0.11, x + sx * 0.012 + 0.014, hy + 0.028, z + 0.11, handle);
+  }
+}
+
 function wheels(L: LocalFrame, hw: number, zs: number[], r: number): void {
   for (const z of zs) for (const x of [-hw + 0.02, hw - 0.02]) L.shape('solid', SHAPES.cylLow, x, r, z, r, 0.24, r, DARK, X);
 }
@@ -75,6 +90,7 @@ export function drawCar(L: LocalFrame, p: Prop): void {
       L.box('solid', -0.8, 1.4, -0.45, 0.8, 1.47, 1.8, c);
       wheels(L, 0.86, [-1.2, 1.25], 0.31);
       lights(L, 0.86, -1.95, 1.95, 0.68);
+      doorMarks(L, 0.86, [-0.7, 0.35, 1.3], [0.2, 1.15], 0.4, 0.88, 0.76);
       break;
     }
     case 2: { // SUV
@@ -85,6 +101,7 @@ export function drawCar(L: LocalFrame, p: Prop): void {
       for (const x of [-0.7, 0.7]) L.box('solid', x - 0.04, 1.7, -0.5, x + 0.04, 1.76, 1.9, DARK); // roof rails
       wheels(L, 0.92, [-1.4, 1.4], 0.38);
       lights(L, 0.92, -2.25, 2.25, 0.82);
+      doorMarks(L, 0.92, [-0.9, 0.35, 1.5], [0.2, 1.35], 0.62, 1.05, 0.92);
       break;
     }
     case 3: { // jeep
@@ -96,6 +113,7 @@ export function drawCar(L: LocalFrame, p: Prop): void {
       L.shape('solid', SHAPES.cylLow, 0, 1.0, 2.15, 0.36, 0.25, 0.36, DARK, Z); // spare wheel
       wheels(L, 0.95, [-1.3, 1.3], 0.42);
       lights(L, 0.9, -2.0, 2.0, 0.85);
+      doorMarks(L, 0.9, [-0.6, 0.5, 1.5], [0.35, 1.35], 0.5, 1.1, 0.98, SEAM);
       break;
     }
     case 4: { // pickup
@@ -107,6 +125,7 @@ export function drawCar(L: LocalFrame, p: Prop): void {
       L.box('solid', -0.92, 0.6, 2.15, 0.92, 1.0, 2.25, c);
       wheels(L, 0.92, [-1.4, 1.45], 0.38);
       lights(L, 0.92, -2.25, 2.25, 0.8);
+      doorMarks(L, 0.92, [-0.95, 0.15], [0.0], 0.62, 1.0, 0.9);
       break;
     }
     case 5: { // EV: smooth nose, long glass canopy, light bars front and back
@@ -117,6 +136,7 @@ export function drawCar(L: LocalFrame, p: Prop): void {
       L.box('lamp', -0.85, 0.58, -2.21, 0.85, 0.64, -2.19, HEAD);
       L.box('solid', -0.85, 0.72, 2.19, 0.85, 0.78, 2.21, TAIL);
       wheels(L, 0.9, [-1.35, 1.4], 0.34);
+      doorMarks(L, 0.9, [-1.0, 0.3, 1.45], [0.15, 1.3], 0.4, 0.82, 0.72, c.clone().multiplyScalar(0.8));
       break;
     }
     case 6: { // minicar
@@ -125,6 +145,7 @@ export function drawCar(L: LocalFrame, p: Prop): void {
       L.box('solid', -0.72, 1.35, -0.4, 0.72, 1.42, 1.25, col('#f4f1ea'));
       wheels(L, 0.75, [-1.0, 1.0], 0.27);
       lights(L, 0.75, -1.55, 1.55, 0.62);
+      doorMarks(L, 0.75, [-0.5, 0.75], [0.6], 0.36, 0.85, 0.74);
       break;
     }
     case 7: { // van / minivan
@@ -134,6 +155,9 @@ export function drawCar(L: LocalFrame, p: Prop): void {
       for (const s of [-1, 1]) L.box('glass', s * 0.925 - 0.01, 1.2, -1.1, s * 0.925 + 0.01, 1.62, 1.9, GLASS);
       wheels(L, 0.92, [-1.5, 1.5], 0.34);
       lights(L, 0.92, -2.25, 2.25, 0.78);
+      doorMarks(L, 0.92, [-1.65, -0.6, -0.45, 0.85], [-0.75, 0.7], 0.45, 1.9, 1.0);
+      for (const sx of [-1, 1]) L.box('solid', sx * 0.93 - 0.01, 1.66, -0.45, sx * 0.93 + 0.01, 1.7, 2.1, SEAM); // slide rail
+      L.box('solid', -0.012, 0.45, 2.252, 0.012, 1.9, 2.262, SEAM);
       break;
     }
     case 8: { // auto-rickshaw: three wheels, canvas canopy
@@ -157,6 +181,7 @@ export function drawCar(L: LocalFrame, p: Prop): void {
       for (const x of [-0.7, 0.7]) L.box('solid', x - 0.04, 0.68, 2.0, x + 0.04, 0.85, 2.1, DARK);
       wheels(L, 0.92, [-1.35, 1.4], 0.33);
       lights(L, 0.92, -2.2, 2.2, 0.5);
+      doorMarks(L, 0.92, [-0.4, 0.8], [0.62], 0.32, 0.68, 0.6);
       break;
     }
     default: { // sedan
@@ -167,6 +192,7 @@ export function drawCar(L: LocalFrame, p: Prop): void {
       L.box('solid', -0.8, 1.36, -0.6, 0.8, 1.43, 1.05, c);
       wheels(L, 0.88, [-1.35, 1.35], 0.33);
       lights(L, 0.88, -2.2, 2.2, 0.66);
+      doorMarks(L, 0.88, [-0.85, 0.25, 1.25], [0.1, 1.1], 0.38, 0.85, 0.75);
       if (p.h) {
         // police light bar
         L.box('lamp', -0.55, 1.43, -0.15, -0.02, 1.55, 0.15, col('#ff2a1a'));
