@@ -457,6 +457,126 @@ Files: `src/buildings/mesher/vehicleMesher.ts` (doors), `src/buildings/mesher/ut
   - cost: nuclear and coal ~32–36k near / ~4k far, gas ~20k / ~3.6k, solar ~23k / ~0.8k, wind ~5k / ~1k; farms ~7–23k near / ~1–9k far (the orchard's trees are the heaviest)
 - **Fix found along the way:** the dark coping on flat parapet roofs was drawn as one lid over the whole roof, so every flat roof showed up grey up close. It now caps only the parapet ring, and roofs show their real colour.
 
+## Terrain generation (done)
+
+The first city-layer phase: the land the city will sit on. It is its own page, the Terrain Lab (`terrain.html`), with `src/terrain/` as the module the city layer will later read.
+
+- **Map:** a seeded 4 × 4 km heightmap (513² samples, ~8 m cells), sea level at y = 0.
+- **Coastline:** the sea sits on one side, chosen at random. The shore is shaped by warped fractal noise into bays, headlands and a continental shelf, with a gently sloping coastal plain where the city will go.
+- **Islands:** 2–5 offshore islands of different sizes, some hilly, each ringed by beach.
+- **Mountains:** a range far inland built from ridged multifractal noise (sharp crests, valleys between), with rocky slopes and snow caps above a ragged snowline.
+- **Hills and plains:** low rolling fBm in between, fading out towards the coastal plain.
+- **Lakes:** 3–5 inland lakes carved as irregular bowls. Each lake's level sits just below its rim so the water is contained, and the lakes have their own shores.
+- **Rivers:** 1–2 rivers traced downhill from the mountains (on a depression-filled copy of the map, so they never get stuck) to a lake or the sea. They carve a channel that keeps descending and widens as it goes; the water is drawn as a ribbon.
+- **Surface colour (biomes) by height, slope and moisture:**
+  - beach sand at the waterline, wet sand just under it, and the seabed darkening with depth (seen through the water)
+  - grassland in several tones, darker forest areas, dry scrub
+  - rock on steep slopes, snow on the peaks
+- **Forests:** instanced trees in clusters wherever the forest mask allows (one draw call per tree type).
+- **Rendering for weak GPUs:** terrain in chunks with two detail levels and skirts to hide cracks, flat-shaded low-poly style. The sea is one large plane out to the horizon; lakes and rivers are their own water meshes.
+- **Terrain Lab UI:**
+  - seed, plus sliders for mountains, islands, lakes, rivers and coast shape
+  - a 2D minimap of the generated map
+  - orbit / pan / WASD navigation, fly-to on double-click
+  - stats (triangles, generation time)
+- **For the city layer:** queries for height, slope, water and "buildable" (dry, flat, not forest), so roads and blocks can be laid on it next.
+
+**What was built** (`src/terrain/`: `noise.ts`, `generate.ts`, `mesh.ts`, `main.ts`; page `terrain.html`):
+
+- **Noise:** seeded simplex, plus fBm, ridged multifractal and domain warping.
+- **Base field:**
+  - A coast field (distance along a random sea direction, warped) gives the shore, a shallow shelf and the deep sea.
+  - A gently rising coastal plain with rolling fBm hills sits behind it.
+  - A mountain belt further inland uses warped ridged noise inside a slow "massif" envelope.
+- **Thermal erosion** (45 passes, talus slope 1.05) turns needle peaks into mountains with scree slopes.
+- **Islands:** offshore discs with a warped outline and a hilly profile, kept clear of the map edge.
+- **Lakes:**
+  - Placed on inland sites with a modest rim, never below sea level (no flooded lagoons).
+  - The water level sits just under the rim.
+  - The bowl is carved, then a shore rises gently, then an embankment tapers away at a gentle grade (no cliffs on the downhill side).
+  - The shoreline polygon follows the warped bowl.
+- **Rivers:**
+  - Steepest descent on a priority-flood-filled copy of the map, so they never get stuck.
+  - They start on high mountain cells and end in the sea, at the map edge or in a lake. A river that reaches a lake's shore flows in and its surface meets the lake flush.
+  - Paths are Chaikin-smoothed, and the bed only ever descends. They widen (10 → 44 m) and deepen downstream.
+- **Water mask:** per sample, one of dry, sea, lake or river. `waterAt`, `heightAt` (bilinear), `slopeAt` and `buildable` are exported for the city layer.
+- **Moisture:** noise, plus water proximity (coast, lakes, rivers). It drives the grass tones, forests and tree density.
+- **Trees:** about 7–11k instances in three kinds (broadleaf, conifer at altitude, palm on beaches), one draw call per kind with per-instance tints.
+- **Colours:**
+  - seabed by depth, wet sand, beach sand on low gentle ground
+  - dry / green / lush grass, forest floor, alpine meadow
+  - rock by slope and height, snow above a snowline set to 68 % of each map's highest peak
+- **Mesh:**
+  - 8 × 8 chunks with three detail levels (8 / 32 / 64 m cells), picked by camera distance.
+  - Flat-shaded vertex colours.
+  - Coarse levels sink their vertices into lakes and rivers so narrow water stays visible.
+  - Skirts hide the cracks; they have their own polygon-offset material so their top edges never z-fight.
+- **Horizon:**
+  - The same base field continues 3 map-widths out as a coarse ring (256 m cells), with the map cut out.
+  - Skirts on both sides of the seam, and the map's outer ~200 m is blended into the ring's coarse grid so they meet exactly.
+  - The far edge fades into the fog.
+- **Water rendering:** a subdivided sea plane plus lake shapes and river ribbons, all Lambert. Specular gave a blown-out Fresnel wash at grazing angles.
+- **Terrain Lab:**
+  - seed / new seed
+  - sliders: mountains, land share, coast roughness, islands, lakes, rivers
+  - toggles: water, trees, wireframe; detail distance; sun direction
+  - minimap (click to jump), double-click to fly, WASD
+  - URL params: `seed`, `cam`, `water=0`, `trees=0`
+  - opens from the sea side, looking inland
+- **Build:** `vite.config.ts` builds both pages.
+
+**Costs (4 × 4 km map, 513² samples):**
+
+- Generation takes ~1.2–1.6 s and meshing ~0.6 s; both are one-off on a new seed.
+- The overview draws ~250–350k triangles; trees are most of it.
+- Tested headlessly on 8 seeds and at every slider extreme:
+  - 4/4 islands and 4 lakes everywhere
+  - 0 leaking lake shores
+  - 0 uphill river steps
+  - no NaNs
+
+## Terrain v2: a planned region (done)
+
+The user's change: far fewer mountains, a smaller map, and the map laid out around what goes on it.
+
+- **Map:** 3 × 3 km at the same 513² samples, so the cells are 6 m instead of 8 m.
+- **Layout (seeded):**
+  - **Main city:** a waterfront city on the coast, about 1 km across, with a seeded name (-abad / -pur / -kot / -garh / -nagar).
+  - **Two towns:** about 400 m across, 300–1,150 m from the city and apart from each other.
+  - **Farmland:** next to one of the towns.
+  - **Island district:** offshore in front of the city, with a flat plateau for buildings and a beach ring.
+- **Flat building land:** the city and towns are smoothed into gently sloping land (the coastal ramp, ~3 %, with the hills removed). Farmland keeps a quarter of its roll.
+- **Highways:** main city → each town.
+  - Routed as a gentle curve that keeps off the sea and the mountain.
+  - The height profile is a moving average of the ground, max grade ~4–8 %.
+  - The ground is cut and filled to the road, blending back over the verges.
+  - Drawn as asphalt with edge lines and a dashed yellow centre line.
+- **Bridge:** a road-and-rail bridge from the city to the island.
+  - It crosses the water at ~7–9 m clearance, with its ends graded into the land.
+  - Deck: a road on one side and a ballasted rail track (rails and sleepers) on the other, with parapets.
+  - Piers every 36 m, plus a tied arch with hangers and wind braces over the main span (red or white).
+- **One mountain**, placed as far from everything as possible and wholly inside the map. If it doesn't fit, it shrinks, and with the mountain slider at 0 there is none.
+  - Shape: a warped cone with ridged spurs plus fine rock noise.
+  - **Hydraulic erosion** (droplets, ~1 per cell over the mountain) carves gullies and lays fans at the foot; a light thermal pass follows.
+  - Shading by curvature: darker, greener gullies and paler ridges. Snow uses the relative snowline, conifers grow up its flanks.
+- **Rivers removed** (code, mesh and UI).
+- **Lakes and small islands:** placed clear of the sites, roads, bridge line and mountain core.
+- **Farm fields:** drawn as crisp draped quads (a staggered field grid with furrow stripes and hedgerow gaps), not painted into the 6 m terrain grid.
+  - Hedgerow trees sit along the field edges.
+  - No trees in the towns, on the island plateau or within 17 m of a road.
+- **Zones:** a per-sample zone mask (city / town / farm / island / road) plus `zoneAt`, `fieldAt`, `sites` and `links` for the city layer.
+- **Terrain Lab:**
+  - floating site labels (with names; the mountain shows its summit height)
+  - site outlines and links on the minimap
+  - sliders: mountain (0 = none), land share, coast roughness, small islands, lakes
+  - the overview frames the whole region from the sea
+- **Costs:** generation ~0.5–0.8 s (it was 1.5 s), about 5–7k trees.
+- **Tests:** headless on 10 seeds plus every extreme:
+  - always 2 towns, a farm, the bridge and 2 highways
+  - no highway point on water
+  - the city, towns and island average 4 % slope
+  - the bridge ends sit on the ground
+
 ## Next
 - Building types still open:
   - supertall landmark
@@ -466,4 +586,4 @@ Files: `src/buildings/mesher/vehicleMesher.ts` (doors), `src/buildings/mesher/ut
   - B6: realistic style switch
   - B7: third LOD
   - B8: stress test
-- Then the city itself: terrain and zoning → roads → blocks and lots → placing buildings → traffic and pedestrians.
+- Then the city itself, on the terrain: the sites are laid out (main city, two towns, farm, island district), highways and the bridge are in → street networks inside each site → blocks and lots → placing buildings → rail line over the bridge → traffic and pedestrians.

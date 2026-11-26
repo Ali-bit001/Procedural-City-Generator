@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Terrain Lab</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #bcd6e8; font-family: system-ui, sans-serif; }
+      #app { position: fixed; inset: 0; }
+      #minimap { position: fixed; left: 12px; top: 12px; width: 220px; height: 220px; border-radius: 8px; border: 2px solid rgba(20,24,30,.6); cursor: crosshair; image-rendering: pixelated; background: #2f86b0; }
+      #hint { position: fixed; left: 12px; bottom: 10px; color: #fff; background: rgba(20,24,30,.55); padding: 4px 9px; border-radius: 6px; font-size: 12px; }
+      #busy { position: fixed; left: 50%; top: 45%; transform: translate(-50%, -50%); color: #fff; background: rgba(20,24,30,.75); padding: 10px 16px; border-radius: 8px; font-size: 14px; display: none; }
+      .site-label { padding: 3px 9px; border-radius: 10px; background: rgba(20,24,30,.78); color: #fff; font-size: 12px; font-weight: 600; text-align: center; white-space: nowrap; }
+      .site-label small { display: block; font-weight: 400; font-size: 10px; opacity: .75; }
+      #links { position: fixed; left: 12px; top: 242px; font-size: 12px; }
+      #links a { color: #fff; background: rgba(20,24,30,.55); padding: 3px 8px; border-radius: 6px; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <canvas id="minimap" width="256" height="256"></canvas>
+    <div id="links"><a href="/index.html">← Building Lab</a></div>
+    <div id="busy">Generating terrain…</div>
+    <div id="hint">Drag: orbit · Right-drag: pan · Scroll: zoom · WASD / arrows: move · Q / E: down / up · Shift: faster · Double-click: fly there · Click the minimap to jump</div>
+    <script type="module" src="/src/terrain/main.ts"></script>
+  </body>
+</html>
